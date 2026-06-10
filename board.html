@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>포트홀 탐지 랭킹 — BMW RoadGuardian</title>
+<style>
+:root{
+  --bg-base:#080810;--bg-surface:#111120;--bg-card:#1a1a2e;--bg-elevated:#22223a;
+  --accent:#1e6fd9;--accent-light:#4a9eff;--accent-glow:rgba(30,111,217,0.25);
+  --text-primary:#f0f0f8;--text-secondary:#8890a8;--text-muted:#4a5068;
+  --success:#22c55e;--danger:#ef4444;--warning:#f59e0b;
+  --grade-s:#ffd700;--grade-a:#4a9eff;--grade-b:#22c55e;--grade-c:#f59e0b;--grade-d:#8890a8;
+  --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--pad:16px;--btn-height:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-base);color:var(--text-primary);min-height:100dvh;overflow-x:hidden}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:var(--btn-height);border:none;border-radius:var(--radius-md);font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;text-decoration:none}
+.btn:active{transform:scale(0.97);opacity:.85}
+.btn-primary{background:var(--accent);color:#fff}
+.wrap{max-width:430px;margin:0 auto;padding:0 var(--pad) 32px}
+
+header{padding:26px var(--pad) 16px;text-align:center}
+header h1{font-size:22px;font-weight:800}
+header .sub{font-size:12px;color:var(--success);margin-top:4px}
+header .sub::before{content:'●';font-size:9px;margin-right:5px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.tabs{display:flex;background:var(--bg-card);border-radius:var(--radius-md);padding:4px;margin-bottom:16px}
+.tab{flex:1;height:40px;border:none;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font-size:14px;font-weight:600;cursor:pointer}
+.tab.active{background:var(--accent);color:#fff}
+
+.list{display:flex;flex-direction:column;gap:8px;min-height:200px}
+.row{display:flex;align-items:center;gap:12px;background:var(--bg-card);border-radius:var(--radius-md);padding:12px 14px;animation:rowIn .35s ease}
+@keyframes rowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.row.me{background:var(--accent-glow);border:1px solid var(--accent)}
+.row.flash{animation:flash 1.2s ease 2}
+@keyframes flash{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--accent-light)}}
+.rank{width:34px;text-align:center;font-size:16px;font-weight:800;flex-shrink:0;color:var(--text-secondary)}
+.rank.r1{color:#FFD700}.rank.r2{color:#C0C0C0}.rank.r3{color:#CD7F32}
+.nick{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me-tag{font-size:11px;color:var(--accent-light);font-weight:700;margin-left:6px}
+.score{font-size:15px;font-weight:700;flex-shrink:0}
+.pill{flex-shrink:0;width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#0a0a14}
+.empty{text-align:center;color:var(--text-muted);font-size:14px;padding:48px 0}
+
+.bottom{margin-top:24px;display:flex;flex-direction:column;gap:14px}
+.home-link{display:block;text-align:center;color:var(--text-secondary);font-size:13px;text-decoration:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>포트홀 탐지 랭킹</h1>
+  <div class="sub">실시간 업데이트</div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" id="tab-all">전체 순위</button>
+    <button class="tab" id="tab-today">오늘 순위</button>
+  </div>
+
+  <div class="list" id="list">
+    <div class="empty" id="loading">랭킹 불러오는 중...</div>
+  </div>
+
+  <div class="bottom">
+    <a class="btn btn-primary" id="btn-play" href="game.html">게임 시작하기 →</a>
+    <a class="home-link" href="index.html">← 홈으로</a>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+'use strict';
+const firebaseConfig = {
+  apiKey: "AIzaSyDhHd--Zz5GMrduusfeeBT14Vddrx7L_54",
+  authDomain: "dorosi-946a9.firebaseapp.com",
+  databaseURL: "https://dorosi-946a9-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dorosi-946a9",
+  storageBucket: "dorosi-946a9.firebasestorage.app",
+  messagingSenderId: "694646649533",
+  appId: "1:694646649533:web:5a77f151c83f37efa97dd4",
+  measurementId: "G-029J0QBGT9"
+};
+let db = null;
+try { firebase.initializeApp(firebaseConfig); db = firebase.database(); }
+catch(e){ console.warn('Firebase init failed:', e); }
+
+const GRADE_COLOR = { S:'#ffd700', A:'#4a9eff', B:'#22c55e', C:'#f59e0b', D:'#8890a8' };
+const listEl = document.getElementById('list');
+const myNick = localStorage.getItem('rg_nickname') || '';
+const highlightNick = new URLSearchParams(location.search).get('highlight') || '';
+let filterToday = false;
+let rawData = null;
+let highlightDone = false;
+
+function localDate(){
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+
+function processScores(rawData, filterToday){
+  const entries = Object.values(rawData || {});
+  const today = localDate();
+  const filtered = filterToday ? entries.filter(e => e.date === today) : entries;
+  return filtered.sort((a, b) =>
+    (b.score||0) - (a.score||0) || (a.timestamp||0) - (b.timestamp||0)
+  ).slice(0, 30);
+}
+
+function render(){
+  const rows = processScores(rawData, filterToday);
+  listEl.innerHTML = '';
+  if (!rows.length){
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = db ? '아직 기록이 없습니다. 첫 번째 탐지관이 되어보세요!' : '랭킹을 불러올 수 없습니다.';
+    listEl.appendChild(empty);
+    return;
+  }
+  let myRow = null;
+  rows.forEach((e, i)=>{
+    const row = document.createElement('div');
+    row.className = 'row';
+    const nick = String(e.nickname || '').slice(0, 8);
+    const isMe = nick && nick === myNick;
+    if (isMe) row.classList.add('me');
+
+    const rank = document.createElement('div');
+    rank.className = 'rank' + (i<3 ? ' r' + (i+1) : '');
+    rank.textContent = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : String(i+1);
+
+    const nickEl = document.createElement('div');
+    nickEl.className = 'nick';
+    nickEl.textContent = nick || '???'; // XSS 방지: textContent
+    if (isMe){
+      const tag = document.createElement('span');
+      tag.className = 'me-tag';
+      tag.textContent = '← 나';
+      nickEl.appendChild(tag);
+    }
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'score';
+    scoreEl.textContent = (e.score||0).toLocaleString('ko-KR');
+
+    const pill = document.createElement('div');
+    pill.className = 'pill';
+    const g = String(e.grade || 'D');
+    pill.textContent = g;
+    pill.style.background = GRADE_COLOR[g] || GRADE_COLOR.D;
+
+    row.appendChild(rank); row.appendChild(nickEl);
+    row.appendChild(scoreEl); row.appendChild(pill);
+    listEl.appendChild(row);
+
+    if (!highlightDone && highlightNick && nick === highlightNick) myRow = row;
+  });
+  // ?highlight= 처리: 자동 스크롤 + 하이라이트 (최초 1회)
+  if (myRow){
+    highlightDone = true;
+    setTimeout(()=>{
+      myRow.scrollIntoView({ behavior:'smooth', block:'center' });
+      myRow.classList.add('flash');
+    }, 300);
+  }
+}
+
+if (db){
+  db.ref('scores').on('value', snap=>{
+    rawData = snap.val();
+    render();
+  }, err=>{
+    console.warn('Leaderboard load failed:', err);
+    rawData = null;
+    render();
+  });
+} else {
+  render();
+}
+
+document.getElementById('tab-all').addEventListener('click', e=>{
+  filterToday = false;
+  e.target.classList.add('active');
+  document.getElementById('tab-today').classList.remove('active');
+  render();
+});
+document.getElementById('tab-today').addEventListener('click', e=>{
+  filterToday = true;
+  e.target.classList.add('active');
+  document.getElementById('tab-all').classList.remove('active');
+  render();
+});
+
+// 게임 시작 시 닉네임 전달
+if (myNick){
+  document.getElementById('btn-play').href = 'game.html?nick=' + encodeURIComponent(myNick);
+}
+</script>
+</body>
+</html>

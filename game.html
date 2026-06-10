@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>RoadGuardian 드라이빙 챌린지</title>
+<style>
+:root{
+  --bg-base:#080810;--bg-surface:#111120;--bg-card:#1a1a2e;--bg-elevated:#22223a;
+  --accent:#1e6fd9;--accent-light:#4a9eff;--accent-glow:rgba(30,111,217,0.25);
+  --text-primary:#f0f0f8;--text-secondary:#8890a8;--text-muted:#4a5068;
+  --success:#22c55e;--danger:#ef4444;--warning:#f59e0b;
+  --grade-s:#ffd700;--grade-a:#4a9eff;--grade-b:#22c55e;--grade-c:#f59e0b;--grade-d:#8890a8;
+  --radius-sm:8px;--radius-md:12px;--radius-lg:16px;--pad:16px;--btn-height:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-base);color:var(--text-primary);min-height:100dvh;overflow-x:hidden}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:var(--btn-height);border:none;border-radius:var(--radius-md);font-size:16px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn:active{transform:scale(0.97);opacity:.85}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:disabled{background:var(--bg-elevated);color:var(--text-muted);cursor:default}
+.btn-outline{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.btn-ghost{background:var(--bg-elevated);color:var(--text-primary)}
+.screen{display:none;min-height:100dvh}
+.screen.active{display:block}
+
+/* ── 닉네임 화면 ── */
+#screen-nickname.active{display:flex;flex-direction:column;justify-content:center;padding:var(--pad);max-width:430px;margin:0 auto}
+.nick-title{text-align:center;margin-bottom:40px}
+.nick-title h1{font-size:32px;font-weight:800;letter-spacing:-0.5px;background:linear-gradient(90deg,var(--accent-light),#fff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nick-title p{color:var(--text-secondary);font-size:15px;margin-top:6px}
+.nick-form label{display:block;font-size:14px;color:var(--text-secondary);margin-bottom:8px}
+.nick-form input{width:100%;height:52px;background:var(--bg-card);border:1.5px solid var(--bg-elevated);border-radius:var(--radius-md);color:var(--text-primary);font-size:17px;padding:0 14px;outline:none}
+.nick-form input:focus{border-color:var(--accent)}
+.nick-hint{font-size:12px;color:var(--text-muted);margin-top:8px;margin-bottom:24px}
+.home-link{display:block;text-align:center;color:var(--text-secondary);font-size:13px;margin-top:24px;text-decoration:none}
+
+/* ── 게임 화면 ── */
+#screen-playing{position:relative}
+#game{display:block;width:100vw;height:100dvh;touch-action:none}
+#hud{position:absolute;top:0;left:0;right:0;padding:14px var(--pad);display:flex;justify-content:space-between;pointer-events:none;z-index:5}
+#hud-score{font-size:16px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+#hud-phase{display:flex;gap:6px;align-items:center}
+.phase-dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:transparent;box-shadow:0 1px 3px rgba(0,0,0,.6)}
+.phase-dot.done{background:#fff}
+.phase-dot.now{background:var(--accent-light);border-color:var(--accent-light);animation:blink 0.9s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+#pipeline-banner{position:absolute;top:54px;left:50%;transform:translateX(-50%);background:rgba(10,10,22,.92);border:1px solid var(--accent);border-radius:var(--radius-md);padding:12px 18px;text-align:center;z-index:6;display:none;min-width:260px}
+#pipeline-banner .steps{display:flex;justify-content:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:.5px}
+#pipeline-banner .step{color:var(--text-muted);transition:color .2s}
+#pipeline-banner .step.on{color:var(--success)}
+#pipeline-banner .conf{font-size:24px;font-weight:800;color:var(--accent-light);margin-top:6px}
+
+.fullscreen-overlay{position:absolute;inset:0;background:rgba(2,2,8,.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:10;text-align:center;padding:var(--pad);opacity:0;transition:opacity .4s}
+.fullscreen-overlay.show{display:flex;opacity:1}
+#phase-overlay h2{font-size:30px;font-weight:800;margin-bottom:10px}
+#phase-overlay p{color:var(--accent-light);font-size:18px;font-weight:600}
+#final-scene .line{font-size:20px;font-weight:700;margin:8px 0;opacity:0;transition:opacity .4s}
+#final-scene .line.show{opacity:1}
+#final-scene .small{font-size:13px;color:var(--text-secondary);font-weight:400}
+.uploader{width:160px;height:4px;background:var(--bg-elevated);border-radius:2px;overflow:hidden;margin:8px auto;display:none}
+.uploader.show{display:block}
+.uploader > div{width:40%;height:100%;background:var(--accent-light);border-radius:2px;animation:slide 0.9s infinite linear}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(420%)}}
+
+/* ── 결과 화면 ── */
+#screen-result.active{display:flex;flex-direction:column;align-items:center;padding:40px var(--pad) 32px;max-width:430px;margin:0 auto}
+.grade-circle{width:130px;height:130px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:60px;font-weight:800;border:4px solid;margin-bottom:10px;box-shadow:0 0 36px var(--accent-glow)}
+.grade-title{font-size:16px;font-weight:600;margin-bottom:22px}
+.final-score{font-size:15px;color:var(--text-secondary)}
+.final-score b{font-size:34px;font-weight:800;display:block;margin-top:2px}
+.best-line{margin:16px 0 6px;font-size:14px;color:var(--text-secondary)}
+.new-record{color:var(--grade-s);font-weight:700;animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.rank-line{font-size:14px;color:var(--accent-light);min-height:20px;margin-bottom:24px}
+.result-btns{width:100%;display:flex;flex-direction:column;gap:12px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50;display:none}
+</style>
+</head>
+<body>
+
+<!-- 화면 A: 닉네임 -->
+<div id="screen-nickname" class="screen active">
+  <div class="nick-title">
+    <h1>RoadGuardian</h1>
+    <p>드라이빙 챌린지</p>
+  </div>
+  <div class="nick-form">
+    <label for="nick-input">닉네임을 입력하세요</label>
+    <input id="nick-input" type="text" maxlength="8" placeholder="예: 도로지킴이" autocomplete="off">
+    <div class="nick-hint">최대 8자 · 리더보드에 표시됩니다</div>
+    <button id="btn-start" class="btn btn-primary" disabled>게임 시작 →</button>
+  </div>
+  <a class="home-link" href="index.html">← 홈으로</a>
+</div>
+
+<!-- 화면 B: 게임 -->
+<div id="screen-playing" class="screen">
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div id="hud-score">SCORE: 0</div>
+    <div id="hud-phase">
+      <div class="phase-dot" id="pd0"></div>
+      <div class="phase-dot" id="pd1"></div>
+      <div class="phase-dot" id="pd2"></div>
+    </div>
+  </div>
+  <div id="pipeline-banner">
+    <div class="steps">
+      <span class="step" id="st-sense">SENSE ✓</span><span class="step">→</span>
+      <span class="step" id="st-sync">SYNC ✓</span><span class="step">→</span>
+      <span class="step" id="st-share">SHARE ✓</span>
+    </div>
+    <div class="conf" id="banner-conf"></div>
+  </div>
+  <div id="phase-overlay" class="fullscreen-overlay">
+    <h2 id="phase-name"></h2>
+    <p>탐지 시작!</p>
+  </div>
+  <div id="final-scene" class="fullscreen-overlay">
+    <div class="line" id="fl1">탐지 완료!</div>
+    <div class="line" id="fl2">데이터 전송 중...</div>
+    <div class="uploader" id="fl-uploader"><div></div></div>
+    <div class="line" id="fl3">한국도로공사 자동 접수 완료 ✓<br><span class="small" id="fl3-small"></span></div>
+  </div>
+</div>
+
+<!-- 화면 C: 결과 -->
+<div id="screen-result" class="screen">
+  <div class="grade-circle" id="grade-circle"><span id="grade-letter"></span></div>
+  <div class="grade-title" id="grade-title"></div>
+  <div class="final-score">최종 점수<b id="final-score"></b></div>
+  <div class="best-line" id="best-line"></div>
+  <div class="rank-line" id="rank-line">순위 계산 중...</div>
+  <div class="result-btns">
+    <button class="btn btn-primary" id="btn-share">SNS 공유하기</button>
+    <button class="btn btn-outline" id="btn-board">순위 보기</button>
+    <button class="btn btn-ghost" id="btn-retry">한 판 더 ↺</button>
+  </div>
+  <a class="home-link" href="index.html">← 홈으로</a>
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+'use strict';
+/* ───────── Firebase ───────── */
+const firebaseConfig = {
+  apiKey: "AIzaSyDhHd--Zz5GMrduusfeeBT14Vddrx7L_54",
+  authDomain: "dorosi-946a9.firebaseapp.com",
+  databaseURL: "https://dorosi-946a9-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dorosi-946a9",
+  storageBucket: "dorosi-946a9.firebasestorage.app",
+  messagingSenderId: "694646649533",
+  appId: "1:694646649533:web:5a77f151c83f37efa97dd4",
+  measurementId: "G-029J0QBGT9"
+};
+let db = null;
+try { firebase.initializeApp(firebaseConfig); db = firebase.database(); }
+catch(e){ console.warn('Firebase init failed:', e); }
+
+/* ───────── 공통 ───────── */
+const $ = id => document.getElementById(id);
+function localDate(){
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+}
+function calcGrade(score){
+  if (score >= 720) return 'S';
+  if (score >= 540) return 'A';
+  if (score >= 340) return 'B';
+  if (score >= 200) return 'C';
+  return 'D';
+}
+const GRADE_META = {
+  S:{color:'var(--grade-s)',hex:'#ffd700',title:'도로 수호 마스터'},
+  A:{color:'var(--grade-a)',hex:'#4a9eff',title:'베테랑 탐지관'},
+  B:{color:'var(--grade-b)',hex:'#22c55e',title:'탐지 훈련병'},
+  C:{color:'var(--grade-c)',hex:'#f59e0b',title:'초보 탐지관'},
+  D:{color:'var(--grade-d)',hex:'#8890a8',title:'다음엔 더 잘할 수 있어요'}
+};
+
+let gameState = 'nickname'; // "nickname" | "playing" | "result"
+let nickname = '';
+function setScreen(s){
+  gameState = s;
+  ['nickname','playing','result'].forEach(k=>{
+    $('screen-'+k).classList.toggle('active', k===s);
+  });
+}
+
+/* ───────── 화면 A: 닉네임 ───────── */
+const nickInput = $('nick-input'), btnStart = $('btn-start');
+(function initNickname(){
+  const urlNick = new URLSearchParams(location.search).get('nick');
+  const saved = localStorage.getItem('rg_nickname') || '';
+  nickInput.value = (urlNick || saved).slice(0,8);
+  btnStart.disabled = !nickInput.value.trim();
+})();
+nickInput.addEventListener('input', ()=>{
+  localStorage.setItem('rg_nickname', nickInput.value);
+  btnStart.disabled = !nickInput.value.trim();
+});
+btnStart.addEventListener('click', ()=>{
+  nickname = nickInput.value.trim().slice(0,8);
+  if (!nickname) return;
+  localStorage.setItem('rg_nickname', nickname);
+  startGame();
+});
+
+/* ───────── 게임 상태 ───────── */
+const canvas = $('game'), ctx = canvas.getContext('2d');
+let W = 0, H = 0, running = false, rafId = 0;
+let score = 0;
+let currentPotholeIndex = 0;
+let currentPothole = null;
+let spawnTimeout = null, phasePause = false;
+let roadScroll = 0;
+let rainDrops = [];
+let lastLane = -1;
+let scoreSaved = false;
+
+const PHASES = [
+  { name:'맑은 낮',  skyTop:'#87CEEB', skyBot:'#E0F0FF', road:'#2a2a2a', scroll:3   },
+  { name:'야간 주행', skyTop:'#060614', skyBot:'#0d0d20', road:'#1a1a1a', scroll:3.5 },
+  { name:'우천 시',  skyTop:'#1a1a2a', skyBot:'#2a2a3a', road:'#222230', scroll:2.5 }
+];
+const DETECT_WINDOW = 2000; // ms
+const ease = p => Math.pow(p, 1.7);
+const phaseOf = idx => Math.floor(idx / 3);
+
+function createPothole(idx){
+  let lane;
+  do { lane = Math.floor(Math.random()*3); } while (lane === lastLane);
+  lastLane = lane;
+  return { x:lane, progress:0, speed:0.004, resolved:false, detected:false,
+           confidence:0, inDetectZone:false, countdownStart:0 };
+}
+
+/* ───────── 시작 / 캔버스 init ───────── */
+function startGame(){
+  score = 0; currentPotholeIndex = 0; currentPothole = null;
+  lastLane = -1; roadScroll = 0; scoreSaved = false; phasePause = false;
+  $('hud-score').textContent = 'SCORE: 0';
+  updatePhaseDots(0);
+  setScreen('playing');
+  // 블랙스크린 방지: 레이아웃 안정화 후 rAF 내에서 사이즈 설정
+  requestAnimationFrame(()=>{
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    W = canvas.width; H = canvas.height;
+    if (W === 0 || H === 0){ requestAnimationFrame(startGameRetry); return; }
+    bootGameLoop();
+  });
+}
+function startGameRetry(){
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  W = canvas.width; H = canvas.height;
+  bootGameLoop();
+}
+function bootGameLoop(){
+  rainDrops = Array.from({length:200}, () => ({
+    x: Math.random()*W, y: Math.random()*H,
+    len: Math.random()*15+10, speed: Math.random()*8+12
+  }));
+  running = true;
+  showPhaseIntro(0, ()=> spawnNextPothole());
+  cancelAnimationFrame(rafId);
+  loop();
+}
+
+/* ───────── 페이즈 / 스폰 ───────── */
+function updatePhaseDots(cur){
+  for (let i=0;i<3;i++){
+    const d = $('pd'+i);
+    d.className = 'phase-dot' + (i<cur ? ' done' : i===cur ? ' now' : '');
+  }
+}
+function showPhaseIntro(phase, cb){
+  phasePause = true;
+  $('phase-name').textContent = PHASES[phase].name;
+  const ov = $('phase-overlay');
+  ov.classList.add('show');
+  setTimeout(()=>{
+    ov.classList.remove('show');
+    phasePause = false;
+    cb && cb();
+  }, 2000);
+}
+function spawnNextPothole(){
+  if (!running) return;
+  if (currentPotholeIndex >= 9){ showFinalScene(); return; }
+  const ph = phaseOf(currentPotholeIndex);
+  const prevPh = currentPotholeIndex === 0 ? 0 : phaseOf(currentPotholeIndex-1);
+  updatePhaseDots(ph);
+  if (currentPotholeIndex > 0 && ph !== prevPh){
+    showPhaseIntro(ph, ()=>{
+      currentPothole = createPothole(currentPotholeIndex);
+      currentPotholeIndex++;
+    });
+    return;
+  }
+  currentPothole = createPothole(currentPotholeIndex);
+  currentPotholeIndex++;
+}
+
+/* ───────── 탭 처리 ───────── */
+function handleTap(e){
+  e.preventDefault();
+  if (gameState !== 'playing' || phasePause) return;
+  const pot = currentPothole;
+  if (pot && pot.inDetectZone && !pot.resolved){
+    pot.detected = true;
+    pot.resolved = true;
+    pot.confidence = Math.floor(Math.random()*40) + 60; // 60–99
+    score += pot.confidence;
+    $('hud-score').textContent = 'SCORE: ' + score;
+    showPipelineAnimation(pot.confidence);
+  }
+}
+canvas.addEventListener('touchstart', handleTap, {passive:false});
+canvas.addEventListener('click', handleTap);
+
+function showPipelineAnimation(conf){
+  const b = $('pipeline-banner');
+  ['st-sense','st-sync','st-share'].forEach(id=>$(id).classList.remove('on'));
+  $('banner-conf').textContent = 'confidence ' + conf + '%';
+  b.style.display = 'block';
+  setTimeout(()=>$('st-sense').classList.add('on'), 50);
+  setTimeout(()=>$('st-sync').classList.add('on'), 350);
+  setTimeout(()=>$('st-share').classList.add('on'), 650);
+  setTimeout(()=>{ b.style.display = 'none'; }, 1800);
+}
+
+/* ───────── 메인 루프 ───────── */
+function loop(){
+  if (!running) return;
+  const ph = currentPothole ? phaseOf(Math.min(currentPotholeIndex-1, 8))
+           : phaseOf(Math.min(currentPotholeIndex, 8));
+  const P = PHASES[Math.max(0, Math.min(2, ph))];
+  roadScroll += P.scroll * 0.012;
+
+  drawScene(P, ph);
+  updatePothole();
+  rafId = requestAnimationFrame(loop);
+}
+
+function updatePothole(){
+  const pot = currentPothole;
+  if (!pot || phasePause) return;
+  if (!pot.resolved){
+    pot.progress += pot.speed;
+    if (!pot.inDetectZone && pot.progress >= 0.55){
+      pot.inDetectZone = true;
+      pot.countdownStart = performance.now();
+    }
+    if (pot.inDetectZone && performance.now() - pot.countdownStart >= DETECT_WINDOW){
+      pot.resolved = true; // 탐지 실패 (타이머 만료)
+    }
+    if (pot.progress >= 1.0){
+      pot.resolved = true; // 화면 이탈
+    }
+    if (pot.resolved && !spawnTimeout){
+      spawnTimeout = setTimeout(()=>{ spawnTimeout = null; spawnNextPothole(); }, 500);
+    }
+  } else if (!spawnTimeout && currentPothole === pot){
+    // 탐지 성공 직후 (handleTap에서 resolved 처리됨)
+    spawnTimeout = setTimeout(()=>{ spawnTimeout = null; spawnNextPothole(); }, 500);
+  }
+}
+
+/* ───────── 렌더링 ───────── */
+function drawScene(P, ph){
+  const vx = W/2, vy = H*0.40;
+  // 하늘
+  const sky = ctx.createLinearGradient(0,0,0,vy);
+  sky.addColorStop(0, P.skyTop); sky.addColorStop(1, P.skyBot);
+  ctx.fillStyle = sky; ctx.fillRect(0,0,W,vy);
+  // 도로 배경
+  ctx.fillStyle = P.skyBot; ctx.fillRect(0,vy,W,H-vy);
+  // 도로 사다리꼴
+  ctx.fillStyle = P.road;
+  ctx.beginPath();
+  ctx.moveTo(vx,vy); ctx.lineTo(0,H); ctx.lineTo(W,H); ctx.closePath();
+  ctx.fill();
+  // 우천: 노면 반사
+  if (ph === 2){
+    ctx.fillStyle = 'rgba(160,180,220,0.06)';
+    ctx.beginPath(); ctx.moveTo(vx,vy); ctx.lineTo(0,H); ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    for (let i=1;i<=5;i++){
+      const y = vy + (H-vy)*ease(i/5);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    }
+  }
+  // 차선 점선 (3개) — 원근 스케일 + 스크롤
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineCap = 'round';
+  const laneBottomXs = [W*(1/6), W*0.5, W*(5/6)];
+  const SEG = 12;
+  for (const bx of laneBottomXs){
+    for (let i=0;i<SEG;i++){
+      let tt = ((i + roadScroll) % SEG) / SEG;
+      const t1 = ease(tt), t2 = ease(Math.min(1, tt + 0.45/SEG));
+      ctx.lineWidth = 1 + 3*t1;
+      ctx.beginPath();
+      ctx.moveTo(vx + (bx-vx)*t1, vy + (H-vy)*t1);
+      ctx.lineTo(vx + (bx-vx)*t2, vy + (H-vy)*t2);
+      ctx.stroke();
+    }
+  }
+  // 포트홀
+  if (currentPothole && !phasePause) drawPothole(currentPothole, vx, vy, laneBottomXs);
+  // 야간 오버레이 + 헤드라이트
+  if (ph === 1){
+    ctx.fillStyle = 'rgba(0,0,8,0.45)'; ctx.fillRect(0,0,W,H);
+    for (const cx of [W*0.38, W*0.62]){
+      const g = ctx.createRadialGradient(cx, H*0.95, 0, cx, H*0.55, H*0.6);
+      g.addColorStop(0,'rgba(255,240,200,0.15)');
+      g.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(cx, H);
+      ctx.lineTo(cx - W*0.22, vy);
+      ctx.lineTo(cx + W*0.22, vy);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  // 우천: 빗줄기
+  if (ph === 2){
+    ctx.strokeStyle = 'rgba(180,200,255,0.45)'; ctx.lineWidth = 1.2;
+    for (const d of rainDrops){
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x - d.len*0.7, d.y + d.len*0.7);
+      ctx.stroke();
+      d.x -= d.speed*0.7; d.y += d.speed*0.7;
+      if (d.y > H || d.x < 0){ d.x = Math.random()*W*1.3; d.y = -20; }
+    }
+  }
+  // 카운트다운 링
+  const pot = currentPothole;
+  if (pot && pot.inDetectZone && !pot.resolved){
+    const remain = Math.max(0, 1 - (performance.now() - pot.countdownStart)/DETECT_WINDOW);
+    const cx = W/2, cy = 86, r = 22;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle = remain > 0.5 ? '#22c55e' : remain > 0.25 ? '#f59e0b' : '#ef4444';
+    ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2 + Math.PI*2*remain); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText((remain*2).toFixed(1), cx, cy);
+  }
+}
+
+function drawPothole(pot, vx, vy, lanes){
+  if (pot.resolved && pot.detected) return; // 탐지 성공 시 즉시 제거
+  const t = ease(Math.min(1, pot.progress));
+  if (t <= 0.01) return;
+  const bx = lanes[pot.x];
+  const px = vx + (bx - vx)*t;
+  const py = vy + (H - vy)*t;
+  const rx = 8 + 60*t, ry = rx*0.42;
+  ctx.fillStyle = '#1a0a00';
+  ctx.strokeStyle = '#3a2010'; ctx.lineWidth = 2 + 2*t;
+  ctx.beginPath();
+  ctx.ellipse(px, py, rx, ry, 0, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  // 불규칙 느낌
+  ctx.fillStyle = 'rgba(58,32,16,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(px - rx*0.3, py - ry*0.2, rx*0.4, ry*0.4, 0.4, 0, Math.PI*2);
+  ctx.fill();
+  // 탐지 가능 구간: 맥박 점선 원
+  if (pot.inDetectZone && !pot.resolved){
+    const pulse = 1 + 0.08*Math.sin(performance.now()/120);
+    ctx.save();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
+    ctx.setLineDash([8,6]);
+    ctx.beginPath();
+    ctx.ellipse(px, py, (rx+14)*pulse, (ry+14)*pulse, 0, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ───────── 파이널 씬 ───────── */
+function showFinalScene(){
+  running = false;
+  cancelAnimationFrame(rafId);
+  const fs = $('final-scene');
+  ['fl1','fl2','fl3'].forEach(id=>$(id).classList.remove('show'));
+  $('fl-uploader').classList.remove('show');
+  $('fl3-small').textContent = '포트홀 9건 · GPS 좌표 전송됨';
+  fs.classList.add('show');
+  setTimeout(()=>$('fl1').classList.add('show'), 100);
+  setTimeout(()=>{ $('fl2').classList.add('show'); $('fl-uploader').classList.add('show'); }, 800);
+  setTimeout(()=>{ $('fl3').classList.add('show'); $('fl-uploader').classList.remove('show'); }, 1700);
+  setTimeout(()=>{ fs.classList.remove('show'); showResult(); }, 2700);
+}
+
+/* ───────── 결과 화면 ───────── */
+function showResult(){
+  const grade = calcGrade(score);
+  const meta = GRADE_META[grade];
+  $('grade-letter').textContent = grade;
+  const gc = $('grade-circle');
+  gc.style.borderColor = meta.hex;
+  gc.style.color = meta.hex;
+  $('grade-title').textContent = meta.title;
+  $('grade-title').style.color = meta.hex;
+  const fsEl = $('final-score');
+  fsEl.textContent = score + '점';
+  fsEl.style.color = meta.hex;
+
+  // 오늘의 최고기록
+  const best = parseInt(localStorage.getItem('rg_best_score') || '0', 10);
+  const bl = $('best-line');
+  if (score > best){
+    localStorage.setItem('rg_best_score', String(score));
+    bl.innerHTML = '';
+    const s1 = document.createElement('span');
+    s1.textContent = '오늘의 최고기록: ' + score + '점 ';
+    const s2 = document.createElement('span');
+    s2.className = 'new-record';
+    s2.textContent = '🎉 신기록!';
+    bl.appendChild(s1); bl.appendChild(s2);
+    runConfetti();
+  } else {
+    bl.textContent = '오늘의 최고기록: ' + Math.max(best, score) + '점';
+  }
+
+  setScreen('result');
+
+  // Firebase: 1회만 저장
+  if (!scoreSaved){
+    scoreSaved = true;
+    saveScore(nickname, score, grade);
+  }
+  fetchRank(score);
+}
+
+async function saveScore(nickname, score, grade){
+  if (!db) return;
+  try {
+    await db.ref('scores').push({
+      nickname, score, grade,
+      timestamp: Date.now(),
+      date: localDate()
+    });
+  } catch(err){
+    console.warn('Score save failed:', err);
+  }
+}
+
+async function fetchRank(myScore){
+  const el = $('rank-line');
+  if (!db){ el.textContent = ''; return; }
+  try {
+    const snap = await db.ref('scores').get();
+    const entries = Object.values(snap.val() || {});
+    if (!entries.length){ el.textContent = '전체 1위 / 1명 참가'; return; }
+    const higher = entries.filter(e => (e.score||0) > myScore).length;
+    el.textContent = '전체 ' + (higher + 1) + '위 / ' + entries.length + '명 참가';
+  } catch(err){
+    console.warn('Rank fetch failed:', err);
+    el.textContent = '';
+  }
+}
+
+/* ───────── 결과 버튼 ───────── */
+$('btn-share').addEventListener('click', async ()=>{
+  const grade = calcGrade(score);
+  const text = 'BMW RoadGuardian 포트홀 탐지 챌린지\n내 점수: ' + score + '점 (' + grade + '등급) 🚗\n\n3S 파이프라인으로 연 4,800건 포트홀을\n자동 탐지·신고하는 프로젝트입니다.\n\n' + location.origin + location.pathname.replace(/game\.html$/, 'index.html');
+  if (navigator.share){
+    try { await navigator.share({ title:'BMW RoadGuardian', text }); } catch(e){}
+  } else {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('공유 텍스트가 복사되었습니다!');
+    } catch(e){ alert(text); }
+  }
+});
+$('btn-board').addEventListener('click', ()=>{
+  window.location.href = 'board.html?highlight=' + encodeURIComponent(nickname);
+});
+$('btn-retry').addEventListener('click', ()=>{
+  nickInput.value = nickname;
+  btnStart.disabled = !nickname;
+  setScreen('nickname');
+});
+
+/* ───────── 컨페티 ───────── */
+function runConfetti(){
+  const c = $('confetti'), cc = c.getContext('2d');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  c.style.display = 'block';
+  const colors = ['#ffd700','#1e6fd9','#22c55e','#ef4444','#f59e0b'];
+  const parts = Array.from({length:30}, ()=>({
+    x: Math.random()*c.width, y: -20 - Math.random()*100,
+    w: 6+Math.random()*6, h: 8+Math.random()*8,
+    vy: 3+Math.random()*4, vx: (Math.random()-0.5)*2,
+    rot: Math.random()*Math.PI, vr: (Math.random()-0.5)*0.2,
+    color: colors[Math.floor(Math.random()*colors.length)]
+  }));
+  const start = performance.now();
+  (function tick(){
+    const t = performance.now() - start;
+    cc.clearRect(0,0,c.width,c.height);
+    if (t > 1500){ c.style.display = 'none'; return; }
+    cc.globalAlpha = Math.max(0, 1 - t/1500);
+    for (const p of parts){
+      p.y += p.vy; p.x += p.vx; p.rot += p.vr;
+      cc.save();
+      cc.translate(p.x,p.y); cc.rotate(p.rot);
+      cc.fillStyle = p.color;
+      cc.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      cc.restore();
+    }
+    cc.globalAlpha = 1;
+    requestAnimationFrame(tick);
+  })();
+}
+
+/* ───────── 리사이즈 대응 ───────── */
+window.addEventListener('resize', ()=>{
+  if (gameState === 'playing' && running){
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    W = canvas.width; H = canvas.height;
+  }
+});
+</script>
+</body>
+</html>
