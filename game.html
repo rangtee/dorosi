@@ -112,6 +112,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .share-box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
 #share-img{width:100%;border-radius:var(--radius-lg);box-shadow:0 8px 40px rgba(0,0,0,.6);display:block}
 .share-btns{display:flex;flex-direction:column;gap:10px}
+
+/* ── 신규: 이벤트/콤보/셰이크 ── */
+@keyframes camshake{0%,100%{transform:none}15%{transform:translate(-8px,5px) rotate(-.4deg)}35%{transform:translate(7px,-6px) rotate(.4deg)}55%{transform:translate(-5px,4px)}75%{transform:translate(4px,-3px)}}
+#game.shake{animation:camshake .45s linear}
+#hud-combo{position:fixed;top:58px;left:16px;z-index:6;font-size:14px;font-weight:900;
+  font-family:'SF Mono',Consolas,monospace;color:#ffb340;text-shadow:0 0 14px rgba(255,179,64,.65);
+  opacity:0;transform:translateY(-4px);transition:all .22s;pointer-events:none}
+#hud-combo.show{opacity:1;transform:none}
+#event-banner{position:fixed;top:17%;left:50%;transform:translateX(-50%) scale(.92);z-index:7;
+  font-size:17px;font-weight:900;padding:10px 20px;border-radius:14px;opacity:0;
+  transition:all .22s;white-space:nowrap;pointer-events:none;backdrop-filter:blur(5px)}
+#event-banner.show{opacity:1;transform:translateX(-50%) scale(1)}
+#event-banner.boost{background:rgba(255,179,64,.14);border:1px solid rgba(255,179,64,.55);color:#ffb340}
+#event-banner.deer{background:rgba(53,224,255,.10);border:1px solid rgba(53,224,255,.5);color:#7eeaff}
+#event-banner.penalty{background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.6);color:#ff7b88}
+.stat-line{font-size:13px;color:#8890a8;margin:2px 0 4px}
+.stat-line b{color:#cdd3e0}
 </style>
 </head>
 <body>
@@ -142,18 +159,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="howto-step">
     <div class="icon">⭕</div>
-    <div class="txt"><b>2. 흰색 점선 원 = 탐지 찬스!</b>
-    <span>포트홀 주위에 점선 원이 나타나면 탐지 가능 구간</span></div>
+    <div class="txt"><b>2. AI 브래킷 = 탐지 찬스!</b>
+    <span>포트홀에 탐지 브래킷이 잡히면 탐지 가능 구간</span></div>
   </div>
   <div class="howto-step">
     <div class="icon">👆</div>
     <div class="txt"><b>3. 원이 떠 있는 동안 화면 탭!</b>
     <span>화면 아무 곳이나 빠르게 탭하면 AI가 탐지·신고합니다</span></div>
   </div>
+  <div class="howto-step">
+    <div class="icon">🦌</div>
+    <div class="txt"><b>4. 고라니는 탭 금지!</b>
+    <span>야생동물을 탭하면 <b style="color:#ff7b88">오탐지 −30점</b> · AI는 구분할 줄 알아야 해요</span></div>
+  </div>
+  <div class="howto-step">
+    <div class="icon">⚡</div>
+    <div class="txt"><b>5. 부스트 &amp; 콤보</b>
+    <span>급가속 구간 탐지는 <b style="color:#ffb340">×1.5</b> · 연속 탐지마다 콤보 보너스</span></div>
+  </div>
   <div class="score-box">
-    <div class="row1"><b>빠르게 탭할수록 높은 점수!</b><br>반응속도 기준 1개당 최대 <b>99점</b> · 총 <b>8개 포트홀</b> · 낮 → 야간 2단계</div>
+    <div class="row1"><b>빠르게 탭할수록 높은 점수!</b><br>1개당 최대 <b>99점</b> · 총 <b>8개 포트홀</b> + 부스트·콤보 보너스 · 낮 → 야간 2단계</div>
     <div class="grades">
-      <span class="gs">S 680+</span><span class="ga">A 560+</span><span class="gb">B 400+</span>
+      <span class="gs">S 820+</span><span class="ga">A 650+</span><span class="gb">B 450+</span>
     </div>
   </div>
   <button id="btn-go" class="btn btn-primary">출발하기 →</button>
@@ -171,6 +198,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
   <div id="hud-ai"><span class="dot"></span>AI VISION · 노면 스캔 중</div>
+  <div id="hud-combo"></div>
+  <div id="event-banner"></div>
   <div id="pipeline-banner">
     <div class="steps">
       <span class="step" id="st-sense">SENSE ✓</span><span class="step">→</span>
@@ -232,6 +261,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="grade-title" id="grade-title"></div>
   <div class="final-score">최종 점수<b id="final-score"></b></div>
   <div class="best-line" id="best-line"></div>
+  <div class="stat-line" id="stat-line"></div>
   <div class="rank-line" id="rank-line">순위 계산 중...</div>
   <div class="result-btns">
     <button class="btn btn-primary" id="btn-share">SNS 공유하기</button>
@@ -281,10 +311,10 @@ function localDate(){
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
 }
 function calcGrade(score){
-  if (score >= 680) return 'S';
-  if (score >= 560) return 'A';
-  if (score >= 400) return 'B';
-  if (score >= 200) return 'C';
+  if (score >= 820) return 'S';
+  if (score >= 650) return 'A';
+  if (score >= 450) return 'B';
+  if (score >= 220) return 'C';
   return 'D';
 }
 const GRADE_META = {
@@ -347,19 +377,48 @@ const DETECT_WINDOW = 2000; // ms
 const ease = p => Math.pow(p, 1.7);
 const phaseOf = idx => Math.floor(idx / PER_PHASE);
 let detectedCount = 0, bestReaction = Infinity;
+/* ── 신규 상태: 콤보 / 고라니 / 부스트 ── */
+let combo = 0, maxCombo = 0, falsePos = 0;
+let currentDeer = null, boostActive = false;
+let seqIdx = 0, currentPhase = 0;
+const DEER_DUR = 2400;
+const SEQUENCE = [
+  {t:'pot',ph:0},{t:'pot',ph:0},{t:'deer',ph:0},{t:'boost',ph:0},{t:'pot',ph:0},
+  {t:'pot',ph:1},{t:'boost',ph:1},{t:'deer',ph:1},{t:'pot',ph:1},{t:'pot',ph:1}
+];
+function eventBanner(cls, txt, ms){
+  const el = $('event-banner');
+  el.className = ''; el.textContent = txt;
+  void el.offsetWidth;
+  el.classList.add(cls, 'show');
+  clearTimeout(eventBanner._t);
+  eventBanner._t = setTimeout(()=> el.classList.remove('show'), ms || 1500);
+}
+function setCombo(n){
+  const el = $('hud-combo');
+  if (n >= 2){ el.textContent = '🔥 COMBO ×' + n; el.classList.add('show'); }
+  else el.classList.remove('show');
+}
+function startShake(){
+  canvas.classList.remove('shake');
+  void canvas.offsetWidth;
+  canvas.classList.add('shake');
+}
 
-function createPothole(idx){
+function createPothole(boosted){
   let lane;
   do { lane = Math.floor(Math.random()*3); } while (lane === lastLane);
   lastLane = lane;
-  return { x:lane, progress:0, speed:0.004, resolved:false, detected:false,
-           confidence:0, inDetectZone:false, countdownStart:0 };
+  return { x:lane, progress:0, speed: boosted ? 0.0062 : 0.004, boosted: !!boosted,
+           resolved:false, detected:false, confidence:0, inDetectZone:false, countdownStart:0 };
 }
 
 /* ───────── 시작 / 캔버스 init ───────── */
 function startGame(){
   score = 0; currentPotholeIndex = 0; currentPothole = null; detectedCount = 0; bestReaction = Infinity; effects = [];
   lastLane = -1; roadScroll = 0; signT = 0.3; scoreSaved = false; phasePause = false;
+  combo = 0; maxCombo = 0; falsePos = 0; setCombo(0);
+  currentDeer = null; boostActive = false; seqIdx = 0; currentPhase = 0;
   $('hud-score').textContent = 'SCORE: 0';
   updatePhaseDots(0);
   setScreen('playing');
@@ -411,19 +470,29 @@ function showPhaseIntro(phase, cb){
 }
 function spawnNextPothole(){
   if (!running) return;
-  if (currentPotholeIndex >= TOTAL_POTHOLES){ showFinalScene(); return; }
-  const ph = phaseOf(currentPotholeIndex);
-  const prevPh = currentPotholeIndex === 0 ? 0 : phaseOf(currentPotholeIndex-1);
-  updatePhaseDots(ph);
-  if (currentPotholeIndex > 0 && ph !== prevPh){
-    showPhaseIntro(ph, ()=>{
-      currentPothole = createPothole(currentPotholeIndex);
-      currentPotholeIndex++;
-    });
+  if (seqIdx >= SEQUENCE.length){ showFinalScene(); return; }
+  const item = SEQUENCE[seqIdx];
+  updatePhaseDots(item.ph);
+  if (item.ph !== currentPhase){
+    currentPhase = item.ph;
+    showPhaseIntro(currentPhase, ()=> fireSeq(item));
     return;
   }
-  currentPothole = createPothole(currentPotholeIndex);
-  currentPotholeIndex++;
+  fireSeq(item);
+}
+function fireSeq(item){
+  seqIdx++;
+  if (item.t === 'deer'){
+    currentPothole = null;
+    currentDeer = { start: performance.now(), dir: Math.random()<0.5?1:-1, tapped:false };
+    eventBanner('deer', '🦌 전방 야생동물 출현! 탭 금지', 1700);
+  } else if (item.t === 'boost'){
+    boostActive = true;
+    eventBanner('boost', '⚡ 부스트 구간! 점수 ×1.5', 1500);
+    currentPothole = createPothole(true);
+  } else {
+    currentPothole = createPothole(false);
+  }
 }
 
 /* ───────── 탭 처리 ───────── */
@@ -440,21 +509,36 @@ function handleTap(e){
     bestReaction = Math.min(bestReaction, reactionMs);
     const r = Math.min(1, reactionMs / DETECT_WINDOW);
     pot.confidence = Math.round(99 - r*40);
-    score += pot.confidence;
-    effects.push({ x: pot.px || W/2, y: pot.py || H*0.7, conf: pot.confidence, start: performance.now() });
+    const gain = pot.boosted ? Math.round(pot.confidence * 1.5) : pot.confidence;
+    combo++; maxCombo = Math.max(maxCombo, combo);
+    const bonus = Math.min(50, 10*(combo-1));
+    score += gain + bonus;
+    setCombo(combo);
+    effects.push({ x: pot.px || W/2, y: pot.py || H*0.7, conf: gain, bonus,
+                   boosted: pot.boosted, start: performance.now() });
     $('hud-score').textContent = 'SCORE: ' + score;
-    showPipelineAnimation(pot.confidence, reactionMs);
+    showPipelineAnimation(pot.confidence, reactionMs, gain, pot.boosted);
+    return;
+  }
+  // 고라니 탭 → 오탐지 페널티
+  if (currentDeer && !currentDeer.tapped){
+    currentDeer.tapped = true;
+    falsePos++; combo = 0; setCombo(0);
+    score = Math.max(0, score - 30);
+    $('hud-score').textContent = 'SCORE: ' + score;
+    eventBanner('penalty', '✕ 오탐지! 야생동물은 신고 대상이 아닙니다 −30', 1900);
+    if (currentDeer.px) effects.push({ fp:true, x: currentDeer.px, y: currentDeer.py - 40, start: performance.now() });
   }
 }
 canvas.addEventListener('touchstart', handleTap, {passive:false});
 canvas.addEventListener('click', handleTap);
 
-function showPipelineAnimation(conf, reactionMs){
+function showPipelineAnimation(conf, reactionMs, gain, boosted){
   const b = $('pipeline-banner');
   ['st-sense','st-sync','st-share'].forEach(id=>$(id).classList.remove('on'));
   const sec = (reactionMs/1000).toFixed(2);
   const label = reactionMs < 600 ? '⚡ FAST!' : reactionMs < 1200 ? '👍 GOOD' : '✓ 탐지';
-  $('banner-conf').innerHTML = label + ' ' + sec + '초<br><span style="font-size:14px;color:#8890a8">confidence ' + conf + '% · +' + conf + '점</span>';
+  $('banner-conf').innerHTML = label + ' ' + sec + '초<br><span style="font-size:14px;color:#8890a8">confidence ' + conf + '%' + (boosted ? ' · <b style="color:#ffb340">⚡×1.5</b>' : '') + ' · +' + (gain||conf) + '점</span>';
   b.style.display = 'block';
   setTimeout(()=>$('st-sense').classList.add('on'), 50);
   setTimeout(()=>$('st-sync').classList.add('on'), 350);
@@ -465,22 +549,23 @@ function showPipelineAnimation(conf, reactionMs){
 /* ───────── 메인 루프 ───────── */
 function loop(){
   if (!running) return;
-  const ph = currentPothole ? phaseOf(Math.min(currentPotholeIndex-1, TOTAL_POTHOLES-1))
-           : phaseOf(Math.min(currentPotholeIndex, TOTAL_POTHOLES-1));
-  const phc = Math.max(0, Math.min(1, ph));
+  const phc = currentPhase;
   const P = PHASES[phc];
-  roadScroll += P.scroll * 0.012;
-  signT += 0.0028 * (P.scroll/3);
+  const sp = boostActive ? 1.85 : 1;
+  roadScroll += P.scroll * 0.012 * sp;
+  signT += 0.0028 * (P.scroll/3) * sp;
   if (signT > 1.25) signT = -0.15;
 
   drawScene(P, phc);
   updatePothole();
+  updateDeer();
   rafId = requestAnimationFrame(loop);
 }
 
 function updatePothole(){
   const pot = currentPothole;
   if (!pot || phasePause) return;
+  if (pot.resolved && pot.boosted) boostActive = false;
   if (!pot.resolved){
     pot.progress += pot.speed;
     if (!pot.inDetectZone && pot.progress >= 0.55){
@@ -495,6 +580,8 @@ function updatePothole(){
     }
     if (pot.resolved && !pot.detected && !pot.missMarked){
       pot.missMarked = true;
+      combo = 0; setCombo(0);
+      startShake();
       if (pot.px) effects.push({ miss:true, x:pot.px, y:pot.py, start:performance.now() });
     }
     if (pot.resolved && !spawnTimeout){
@@ -503,6 +590,88 @@ function updatePothole(){
   } else if (!spawnTimeout && currentPothole === pot){
     spawnTimeout = setTimeout(()=>{ spawnTimeout = null; spawnNextPothole(); }, 500);
   }
+}
+
+/* ───────── 고라니 ───────── */
+function updateDeer(){
+  const d = currentDeer;
+  if (!d || phasePause) return;
+  if (performance.now() - d.start >= DEER_DUR){
+    currentDeer = null;
+    if (!spawnTimeout) spawnTimeout = setTimeout(()=>{ spawnTimeout = null; spawnNextPothole(); }, 500);
+  }
+}
+function drawDeer(vx, vy){
+  const d = currentDeer; if (!d) return;
+  const now = performance.now();
+  const k = Math.min(1, (now - d.start)/DEER_DUR);
+  const t = ease(0.55);
+  const py = vy + (H - vy)*t;
+  const px = d.dir > 0 ? (-90 + (W+180)*k) : (W+90 - (W+180)*k);
+  d.px = px; d.py = py;
+  const night = currentPhase === 1;
+  const s = 1.0 + 0.4*t;
+  const gallop = Math.sin(now/110);
+  const hop = Math.abs(gallop)*9;
+  const body  = night ? '#2c2820' : '#7a5a38';
+  const belly = night ? '#3c352a' : '#9a7a50';
+  ctx.save();
+  ctx.translate(px, py - hop*s);
+  if (d.dir < 0) ctx.scale(-1, 1);
+  ctx.scale(s, s);
+  // 그림자
+  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  ctx.beginPath(); ctx.ellipse(0, 22 + hop, 32, 6, 0, 0, Math.PI*2); ctx.fill();
+  // 다리 (갤럽 포즈)
+  ctx.strokeStyle = body; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-18,-4); ctx.lineTo(-18-9*gallop, 20); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-11,-4); ctx.lineTo(-11+8*gallop, 18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14,-4);  ctx.lineTo(14+10*gallop, 20); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(21,-4);  ctx.lineTo(21-9*gallop, 18); ctx.stroke();
+  // 몸통 + 배
+  ctx.fillStyle = body;
+  ctx.beginPath(); ctx.ellipse(0,-13, 26, 13, -0.08, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = belly;
+  ctx.beginPath(); ctx.ellipse(-2,-8, 17, 6.5, -0.05, 0, Math.PI*2); ctx.fill();
+  // 목 + 머리 + 귀
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.moveTo(19,-18); ctx.quadraticCurveTo(29,-34, 33,-41);
+  ctx.lineTo(40,-37); ctx.quadraticCurveTo(31,-23, 25,-11);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(38,-41, 9.5, 6, 0.45, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(33,-46); ctx.lineTo(28,-57); ctx.lineTo(37,-49); ctx.closePath(); ctx.fill();
+  // 꼬리
+  ctx.fillStyle = night ? '#46402f' : '#5e4226';
+  ctx.beginPath(); ctx.ellipse(-26,-17, 5, 3, 0.5, 0, Math.PI*2); ctx.fill();
+  // 야간: 헤드라이트에 반사되는 눈빛 (현실감)
+  if (night){
+    ctx.fillStyle = '#ffeaa6';
+    ctx.shadowColor = '#ffeaa6'; ctx.shadowBlur = 9;
+    ctx.beginPath(); ctx.arc(41,-43, 2.6, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  ctx.restore();
+  // AI 분류 브래킷 (앰버 = 신고 제외 대상)
+  const bw = 86*s, bh = 78*s, bx0 = px - bw/2, by0 = py - hop*s - 52*s;
+  const cl = 16;
+  ctx.strokeStyle = '#ffb340'; ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(bx0, by0+cl); ctx.lineTo(bx0, by0); ctx.lineTo(bx0+cl, by0);
+  ctx.moveTo(bx0+bw-cl, by0); ctx.lineTo(bx0+bw, by0); ctx.lineTo(bx0+bw, by0+cl);
+  ctx.moveTo(bx0+bw, by0+bh-cl); ctx.lineTo(bx0+bw, by0+bh); ctx.lineTo(bx0+bw-cl, by0+bh);
+  ctx.moveTo(bx0+cl, by0+bh); ctx.lineTo(bx0, by0+bh); ctx.lineTo(bx0, by0+bh-cl);
+  ctx.stroke();
+  const lp = Math.min(99, Math.floor(90 + 9*Math.sin(now/97)));
+  const txt = 'WILDLIFE ' + lp + '% · 신고 제외';
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const tw = ctx.measureText(txt).width;
+  ctx.fillStyle = 'rgba(22,14,4,0.85)';
+  ctx.fillRect(bx0, by0 - 21, tw + 12, 17);
+  ctx.fillStyle = '#ffb340';
+  ctx.fillRect(bx0, by0 - 21, 3, 17);
+  ctx.fillText(txt, bx0 + 8, by0 - 12);
 }
 
 /* ───────── 고속도로 렌더링 ───────── */
@@ -615,6 +784,7 @@ function drawScene(P, ph){
 
   /* 9. 포트홀 + 탐지 이펙트 */
   if (currentPothole && !phasePause) drawPothole(currentPothole, vx, vy, laneBottomXs);
+  if (currentDeer && !phasePause) drawDeer(vx, vy);
   drawEffects();
 
   /* 9. 야간: 어둠 + 헤드라이트 */
@@ -654,6 +824,20 @@ function drawScene(P, ph){
   ctx.beginPath();
   ctx.moveTo(W*0.5, H - hoodH*1.05); ctx.lineTo(W*0.5, H);
   ctx.stroke();
+
+  /* 부스트: 스피드 라인 */
+  if (boostActive){
+    ctx.strokeStyle = 'rgba(255,179,64,0.34)';
+    for (let i=0;i<14;i++){
+      const a = (i/14)*Math.PI*2 + roadScroll*0.22;
+      const r1 = H*0.30, r2 = H*0.55 + (i%3)*H*0.04;
+      ctx.lineWidth = 1.2 + (i%3);
+      ctx.beginPath();
+      ctx.moveTo(W/2 + Math.cos(a)*r1, H*0.52 + Math.sin(a)*r1*0.62);
+      ctx.lineTo(W/2 + Math.cos(a)*r2, H*0.52 + Math.sin(a)*r2*0.62);
+      ctx.stroke();
+    }
+  }
 
   /* 비네트 (시네마틱) */
   const vg = ctx.createRadialGradient(W/2, H*0.55, H*0.34, W/2, H*0.55, H*0.92);
@@ -793,7 +977,8 @@ function drawPothole(pot, vx, vy, lanes){
     const bx0 = px - rx - pad, by0 = py - ry - pad;
     const bw = (rx + pad)*2, bh = (ry + pad)*2;
     const cl = Math.min(bw, bh)*0.32;
-    ctx.strokeStyle = '#35e0ff'; ctx.lineWidth = 2.5;
+    const bcol = pot.boosted ? '#ffb340' : '#35e0ff';
+    ctx.strokeStyle = bcol; ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(bx0, by0+cl); ctx.lineTo(bx0, by0); ctx.lineTo(bx0+cl, by0);
     ctx.moveTo(bx0+bw-cl, by0); ctx.lineTo(bx0+bw, by0); ctx.lineTo(bx0+bw, by0+cl);
@@ -802,17 +987,17 @@ function drawPothole(pot, vx, vy, lanes){
     ctx.stroke();
     // 스캔라인
     const sy = by0 + bh*(0.5 + 0.48*Math.sin(now/170));
-    ctx.strokeStyle = 'rgba(53,224,255,0.45)'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = pot.boosted ? 'rgba(255,179,64,0.45)' : 'rgba(53,224,255,0.45)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(bx0+3, sy); ctx.lineTo(bx0+bw-3, sy); ctx.stroke();
     // 라이브 추론 라벨
     const lp = Math.min(99, Math.floor(88 + 11*Math.sin(now/97)));
-    const txt = 'POTHOLE ' + lp + '%';
+    const txt = 'POTHOLE ' + lp + '%' + (pot.boosted ? ' ⚡' : '');
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     const tw = ctx.measureText(txt).width;
     ctx.fillStyle = 'rgba(6,12,22,0.85)';
     ctx.fillRect(bx0, by0 - 21, tw + 12, 17);
-    ctx.fillStyle = '#35e0ff';
+    ctx.fillStyle = bcol;
     ctx.fillRect(bx0, by0 - 21, 3, 17);
     ctx.fillText(txt, bx0 + 8, by0 - 12);
   }
@@ -829,11 +1014,18 @@ function drawEffects(){
     if (e.miss){
       ctx.fillStyle = '#ef4444'; ctx.font = 'bold 17px sans-serif';
       ctx.fillText('✕ 미탐지', e.x, e.y - 34*t);
+    } else if (e.fp){
+      ctx.fillStyle = '#ff5d6c'; ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('✕ 오탐지 −30', e.x, e.y - 34*t);
     } else {
-      ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 3.5*(1-t);
+      ctx.strokeStyle = e.boosted ? '#ffb340' : '#22c55e'; ctx.lineWidth = 3.5*(1-t);
       ctx.beginPath(); ctx.arc(e.x, e.y, 18 + 70*t, 0, Math.PI*2); ctx.stroke();
-      ctx.fillStyle = '#22c55e'; ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('+' + e.conf, e.x, e.y - 30 - 38*t);
+      ctx.fillStyle = e.boosted ? '#ffb340' : '#22c55e'; ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('+' + e.conf + (e.boosted ? ' ⚡' : ''), e.x, e.y - 30 - 38*t);
+      if (e.bonus){
+        ctx.fillStyle = '#ffb340'; ctx.font = 'bold 15px sans-serif';
+        ctx.fillText('콤보 +' + e.bonus, e.x, e.y - 6 - 38*t);
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -889,6 +1081,8 @@ function showResult(){
     bl.textContent = '오늘의 최고기록: ' + Math.max(best, score) + '점';
   }
 
+  $('stat-line').innerHTML = '탐지 <b>' + detectedCount + '/8</b> · 최대 콤보 <b>' +
+    maxCombo + '</b> · 오탐지 <b>' + falsePos + '회</b>';
   setScreen('result');
 
   if (!scoreSaved){
