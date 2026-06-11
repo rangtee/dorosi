@@ -928,7 +928,7 @@ async function fetchRank(myScore){
 
 /* ───────── 결과 버튼: 공유 카드 ───────── */
 function buildShareCard(){
-  const CW = 1080, CH = 1350;
+  const CW = 1080, CH = 1080;
   const cv = document.createElement('canvas');
   cv.width = CW; cv.height = CH;
   const c = cv.getContext('2d');
@@ -943,70 +943,73 @@ function buildShareCard(){
   c.strokeStyle = 'rgba(74,158,255,0.08)'; c.lineWidth = 3;
   for (let i=0;i<7;i++){
     c.beginPath();
-    c.moveTo(CW/2, 460);
+    c.moveTo(CW/2, 390);
     c.lineTo((i/6)*CW, CH);
     c.stroke();
   }
 
+  /* 헤더: 두 색 텍스트를 실측 폭으로 이어붙여 겹침 방지 */
+  c.font = '800 54px ' + F;
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  const t1 = 'BMW ', t2 = 'RoadGuardian';
+  const w1 = c.measureText(t1).width, w2 = c.measureText(t2).width;
+  let hx = (CW - (w1 + w2)) / 2;
+  c.fillStyle = '#f0f0f8'; c.fillText(t1, hx, 104);
+  c.fillStyle = '#4a9eff'; c.fillText(t2, hx + w1, 104);
   c.textAlign = 'center';
-  /* 헤더 */
-  c.fillStyle = '#f0f0f8'; c.font = '800 58px ' + F;
-  c.fillText('BMW ', CW/2 - 130, 130);
-  c.fillStyle = '#4a9eff';
-  c.fillText('RoadGuardian', CW/2 + 115, 130);
-  c.fillStyle = '#8890a8'; c.font = '500 34px ' + F;
-  c.fillText('포트홀 탐지 드라이빙 챌린지', CW/2, 188);
+  c.fillStyle = '#8890a8'; c.font = '500 31px ' + F;
+  c.fillText('포트홀 탐지 드라이빙 챌린지', CW/2, 154);
 
   /* 등급 원 */
-  const cx = CW/2, cy = 470, r = 165;
+  const cx = CW/2, cy = 388, r = 140;
   c.save();
-  c.shadowColor = meta.hex; c.shadowBlur = 60;
-  c.strokeStyle = meta.hex; c.lineWidth = 14;
+  c.shadowColor = meta.hex; c.shadowBlur = 50;
+  c.strokeStyle = meta.hex; c.lineWidth = 12;
   c.beginPath(); c.arc(cx, cy, r, 0, Math.PI*2); c.stroke();
   c.restore();
-  c.fillStyle = meta.hex; c.font = '800 190px ' + F;
+  c.fillStyle = meta.hex; c.font = '800 160px ' + F;
   c.textBaseline = 'middle';
-  c.fillText(grade, cx, cy + 12);
+  c.fillText(grade, cx, cy + 10);
   c.textBaseline = 'alphabetic';
   /* 칭호 + 닉네임 */
-  c.font = '700 46px ' + F;
-  c.fillText(meta.title, cx, cy + r + 86);
-  c.fillStyle = '#f0f0f8'; c.font = '600 40px ' + F;
-  c.fillText(nickname + ' 님', cx, cy + r + 148);
+  c.font = '700 42px ' + F;
+  c.fillText(meta.title, cx, cy + r + 70);
+  c.fillStyle = '#f0f0f8'; c.font = '600 36px ' + F;
+  c.fillText(nickname + ' 님', cx, cy + r + 124);
 
   /* 점수 */
-  c.fillStyle = '#fff'; c.font = '800 130px ' + F;
-  c.fillText(score.toLocaleString('ko-KR') + '점', cx, 940);
+  c.fillStyle = '#fff'; c.font = '800 104px ' + F;
+  c.fillText(score.toLocaleString('ko-KR') + '점', cx, 768);
   /* 스탯 */
-  c.fillStyle = '#8890a8'; c.font = '500 36px ' + F;
+  c.fillStyle = '#8890a8'; c.font = '500 31px ' + F;
   const rt = isFinite(bestReaction) ? (bestReaction/1000).toFixed(2) + '초' : '-';
-  c.fillText('포트홀 ' + detectedCount + '/' + TOTAL_POTHOLES + '건 탐지  ·  최고 반응속도 ' + rt, cx, 1010);
-  c.fillStyle = '#4a9eff'; c.font = '600 33px ' + F;
-  c.fillText('실제 RoadGuardian AI는 0.76초 만에 탐지·자동 신고합니다', cx, 1068);
+  c.fillText('포트홀 ' + detectedCount + '/' + TOTAL_POTHOLES + '건 탐지  ·  최고 반응속도 ' + rt, cx, 824);
+  c.fillStyle = '#4a9eff'; c.font = '600 28px ' + F;
+  c.fillText('실제 RoadGuardian AI는 0.76초 만에 탐지·자동 신고합니다', cx, 872);
 
   /* 하단 도로 일러스트 */
-  c.fillStyle = '#2a2d36'; c.fillRect(0, 1120, CW, 160);
-  c.strokeStyle = 'rgba(250,250,250,0.75)'; c.lineWidth = 8;
-  c.setLineDash([55,40]);
-  c.beginPath(); c.moveTo(0, 1200); c.lineTo(CW, 1200); c.stroke();
+  c.fillStyle = '#2a2d36'; c.fillRect(0, 902, CW, 116);
+  c.strokeStyle = 'rgba(250,250,250,0.75)'; c.lineWidth = 7;
+  c.setLineDash([48,36]);
+  c.beginPath(); c.moveTo(0, 960); c.lineTo(CW, 960); c.stroke();
   c.setLineDash([]);
+  c.fillStyle = '#8890a8'; c.font = '600 25px ' + F;
+  c.fillText('SENSE → SYNC → SHARE', 535, 942);
   // 포트홀(좌) → 패치 완료(우)
   c.fillStyle = '#181008'; c.strokeStyle = '#4a3520'; c.lineWidth = 5;
-  c.beginPath(); c.ellipse(250, 1240, 62, 24, 0, 0, Math.PI*2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(250, 982, 54, 20, 0, 0, Math.PI*2); c.fill(); c.stroke();
   c.fillStyle = '#52555e'; c.strokeStyle = '#6a6e78';
-  c.beginPath(); c.ellipse(830, 1240, 66, 26, 0, 0, Math.PI*2); c.fill(); c.stroke();
-  c.fillStyle = '#22c55e'; c.font = '700 40px ' + F;
-  c.fillText('✓', 830, 1252);
+  c.beginPath(); c.ellipse(830, 982, 58, 22, 0, 0, Math.PI*2); c.fill(); c.stroke();
+  c.fillStyle = '#22c55e'; c.font = '700 34px ' + F;
+  c.fillText('✓', 830, 993);
   // 화살표
-  c.strokeStyle = '#4a9eff'; c.lineWidth = 7;
-  c.beginPath(); c.moveTo(370, 1240); c.lineTo(700, 1240); c.stroke();
-  c.beginPath(); c.moveTo(700, 1240); c.lineTo(668, 1222); c.moveTo(700, 1240); c.lineTo(668, 1258); c.stroke();
-  c.fillStyle = '#8890a8'; c.font = '600 28px ' + F;
-  c.fillText('SENSE → SYNC → SHARE', 535, 1180);
+  c.strokeStyle = '#4a9eff'; c.lineWidth = 6;
+  c.beginPath(); c.moveTo(360, 982); c.lineTo(700, 982); c.stroke();
+  c.beginPath(); c.moveTo(700, 982); c.lineTo(672, 966); c.moveTo(700, 982); c.lineTo(672, 998); c.stroke();
 
   /* 푸터 */
-  c.fillStyle = '#4a5068'; c.font = '500 28px ' + F;
-  c.fillText('도로시 팀 | YIDP 2026 · 내 차가 도로를 지킨다', cx, 1322);
+  c.fillStyle = '#4a5068'; c.font = '500 26px ' + F;
+  c.fillText('도로시 팀 | YIDP 2026 · 내 차가 도로를 지킨다', cx, 1054);
   return cv;
 }
 
