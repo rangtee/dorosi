@@ -54,7 +54,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #screen-playing{position:relative}
 #game{display:block;width:100vw;height:100dvh;touch-action:none}
 #hud{position:absolute;top:0;left:0;right:0;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;z-index:5}
-#hud-score{font-size:15px;font-weight:800;background:rgba(8,10,18,.55);padding:6px 12px;border-radius:20px;backdrop-filter:blur(4px)}
+#hud-score{font-size:15px;font-weight:800;font-family:'SF Mono',Consolas,monospace;background:rgba(8,10,18,.6);padding:6px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(4px)}
+#hud-ai{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-size:11.5px;letter-spacing:1.5px;font-weight:700;font-family:'SF Mono',Consolas,monospace;color:#35e0ff;background:rgba(8,10,18,.55);padding:7px 14px;border-radius:20px;border:1px solid rgba(53,224,255,.35);backdrop-filter:blur(4px);z-index:5;pointer-events:none;white-space:nowrap}
+#hud-ai .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:7px;animation:blink 1.2s infinite}
 #hud-phase{display:flex;gap:6px;align-items:center;background:rgba(8,10,18,.55);padding:9px 12px;border-radius:20px;backdrop-filter:blur(4px)}
 .phase-dot{width:9px;height:9px;border-radius:50%;border:2px solid #fff;background:transparent}
 .phase-dot.done{background:#fff}
@@ -71,6 +73,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .fullscreen-overlay.show{display:flex;opacity:1}
 #phase-overlay h2{font-size:30px;font-weight:800;margin-bottom:10px}
 #phase-overlay p{color:var(--accent-light);font-size:18px;font-weight:600}
+#phase-overlay .sub2{margin-top:12px;font-size:14px;color:var(--text-secondary);font-weight:400;line-height:1.5}
 #final-scene .line{font-size:20px;font-weight:700;margin:8px 0;opacity:0;transition:opacity .4s}
 #final-scene .line.show{opacity:1}
 #final-scene .small{font-size:13px;color:var(--text-secondary);font-weight:400}
@@ -78,6 +81,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .uploader.show{display:block}
 .uploader > div{width:40%;height:100%;background:var(--accent-light);border-radius:2px;animation:slide 0.9s infinite linear}
 @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(420%)}}
+/* ── 보수 애니메이션 ── */
+#repair-svg{display:none;margin:14px auto 4px;opacity:0;transition:opacity .4s}
+#repair-svg.on{display:block;opacity:1}
+#repair-svg .rp-truck{transform:translateX(340px);transition:transform 1.1s cubic-bezier(.2,.8,.3,1)}
+#repair-svg.on .rp-truck{transform:translateX(0)}
+#repair-svg .rp-cone{opacity:0;transition:opacity .3s ease 1.1s}
+#repair-svg.on .rp-cone{opacity:1}
+#repair-svg .rp-worker{opacity:0;transition:opacity .35s ease 1.4s}
+#repair-svg.on .rp-worker{opacity:1}
+#repair-svg .rp-patch{transform:scale(0);transform-origin:90px 128px;transition:transform .9s ease 1.9s}
+#repair-svg.on .rp-patch{transform:scale(1)}
 
 /* ── 결과 화면 ── */
 #screen-result.active{display:flex;flex-direction:column;align-items:center;padding:40px var(--pad) 32px;max-width:430px;margin:0 auto}
@@ -91,6 +105,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rank-line{font-size:14px;color:var(--accent-light);min-height:20px;margin-bottom:24px}
 .result-btns{width:100%;display:flex;flex-direction:column;gap:12px}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:50;display:none}
+
+/* ── 공유 카드 모달 ── */
+#share-modal{position:fixed;inset:0;background:rgba(2,2,8,.9);z-index:60;display:none;align-items:center;justify-content:center;padding:20px;opacity:0;transition:opacity .25s}
+#share-modal.show{display:flex;opacity:1}
+.share-box{width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
+#share-img{width:100%;border-radius:var(--radius-lg);box-shadow:0 8px 40px rgba(0,0,0,.6);display:block}
+.share-btns{display:flex;flex-direction:column;gap:10px}
 </style>
 </head>
 <body>
@@ -130,9 +151,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span>화면 아무 곳이나 빠르게 탭하면 AI가 탐지·신고합니다</span></div>
   </div>
   <div class="score-box">
-    <div class="row1">탭 성공 시 <b>AI 신뢰도(60~99%)</b>만큼 점수 획득<br>총 <b>9개 포트홀</b> · 낮 → 야간 → 우천 3단계</div>
+    <div class="row1"><b>빠르게 탭할수록 높은 점수!</b><br>반응속도 기준 1개당 최대 <b>99점</b> · 총 <b>8개 포트홀</b> · 낮 → 야간 2단계</div>
     <div class="grades">
-      <span class="gs">S 720+</span><span class="ga">A 540+</span><span class="gb">B 340+</span>
+      <span class="gs">S 680+</span><span class="ga">A 560+</span><span class="gb">B 400+</span>
     </div>
   </div>
   <button id="btn-go" class="btn btn-primary">출발하기 →</button>
@@ -147,9 +168,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div id="hud-phase">
       <div class="phase-dot" id="pd0"></div>
       <div class="phase-dot" id="pd1"></div>
-      <div class="phase-dot" id="pd2"></div>
     </div>
   </div>
+  <div id="hud-ai"><span class="dot"></span>AI VISION · 노면 스캔 중</div>
   <div id="pipeline-banner">
     <div class="steps">
       <span class="step" id="st-sense">SENSE ✓</span><span class="step">→</span>
@@ -161,12 +182,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="phase-overlay" class="fullscreen-overlay">
     <h2 id="phase-name"></h2>
     <p>탐지 시작!</p>
+    <p class="sub2" id="phase-sub"></p>
   </div>
   <div id="final-scene" class="fullscreen-overlay">
     <div class="line" id="fl1">탐지 완료!</div>
     <div class="line" id="fl2">데이터 전송 중...</div>
     <div class="uploader" id="fl-uploader"><div></div></div>
     <div class="line" id="fl3">한국도로공사 자동 접수 완료 ✓<br><span class="small" id="fl3-small"></span></div>
+    <svg id="repair-svg" viewBox="0 0 320 150" width="300" height="141" xmlns="http://www.w3.org/2000/svg">
+      <!-- 도로 -->
+      <rect x="0" y="92" width="320" height="58" fill="#3a3d44"/>
+      <line x1="0" y1="119" x2="320" y2="119" stroke="#fafafa" stroke-width="3" stroke-dasharray="16 12" opacity="0.7"/>
+      <!-- 포트홀 -->
+      <ellipse id="rp-hole" cx="90" cy="128" rx="26" ry="10" fill="#181008" stroke="#4a3520" stroke-width="2"/>
+      <!-- 보수 패치 -->
+      <ellipse class="rp-patch" cx="90" cy="128" rx="28" ry="11" fill="#52555e" stroke="#6a6e78" stroke-width="2"/>
+      <!-- 라바콘 -->
+      <g class="rp-cone"><polygon points="138,130 145,108 152,130" fill="#f97316"/><rect x="134" y="128" width="22" height="4" rx="2" fill="#ea580c"/><rect x="141" y="115" width="8" height="4" fill="#fff"/></g>
+      <g class="rp-cone" style="transition-delay:1.25s"><polygon points="38,130 45,108 52,130" fill="#f97316"/><rect x="34" y="128" width="22" height="4" rx="2" fill="#ea580c"/><rect x="41" y="115" width="8" height="4" fill="#fff"/></g>
+      <!-- 작업자 -->
+      <g class="rp-worker">
+        <circle cx="125" cy="86" r="7" fill="#f0c8a0"/>
+        <path d="M117 84 a8 8 0 0 1 16 0 z" fill="#f59e0b"/>
+        <rect x="118" y="93" width="14" height="20" rx="4" fill="#facc15"/>
+        <rect x="118" y="98" width="14" height="3" fill="#9ca3af"/>
+        <rect x="119" y="113" width="5" height="14" fill="#374151"/>
+        <rect x="126" y="113" width="5" height="14" fill="#374151"/>
+        <line x1="118" y1="98" x2="104" y2="118" stroke="#facc15" stroke-width="4" stroke-linecap="round"/>
+        <line x1="104" y1="118" x2="100" y2="130" stroke="#8b5a2b" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <!-- 보수 트럭 -->
+      <g class="rp-truck">
+        <rect x="180" y="86" width="86" height="34" rx="5" fill="#f97316"/>
+        <rect x="262" y="96" width="34" height="24" rx="4" fill="#fb923c"/>
+        <rect x="268" y="100" width="14" height="10" rx="2" fill="#bfdbfe"/>
+        <rect x="208" y="78" width="10" height="8" rx="2" fill="#fbbf24"/>
+        <text x="223" y="108" font-size="13" font-weight="800" fill="#fff" text-anchor="middle" font-family="sans-serif">긴급보수</text>
+        <circle cx="204" cy="124" r="9" fill="#1f2326"/><circle cx="204" cy="124" r="4" fill="#6b7280"/>
+        <circle cx="276" cy="124" r="9" fill="#1f2326"/><circle cx="276" cy="124" r="4" fill="#6b7280"/>
+      </g>
+    </svg>
+    <div class="line" id="fl4">도로 보수 완료! 🛠️<br><span class="small">탐지부터 보수까지, RoadGuardian이 함께합니다</span></div>
   </div>
 </div>
 
@@ -186,6 +242,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <canvas id="confetti"></canvas>
+
+<!-- 공유 카드 모달 -->
+<div id="share-modal">
+  <div class="share-box">
+    <img id="share-img" alt="결과 카드">
+    <div class="share-btns">
+      <button class="btn btn-primary" id="btn-share-do">이미지로 공유</button>
+      <button class="btn btn-outline" id="btn-share-save">이미지 저장</button>
+      <button class="btn btn-ghost" id="btn-share-close">닫기</button>
+    </div>
+  </div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -213,9 +281,9 @@ function localDate(){
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
 }
 function calcGrade(score){
-  if (score >= 720) return 'S';
-  if (score >= 540) return 'A';
-  if (score >= 340) return 'B';
+  if (score >= 680) return 'S';
+  if (score >= 560) return 'A';
+  if (score >= 400) return 'B';
   if (score >= 200) return 'C';
   return 'D';
 }
@@ -265,18 +333,20 @@ let currentPotholeIndex = 0;
 let currentPothole = null;
 let spawnTimeout = null, phasePause = false;
 let roadScroll = 0, signT = 0.0;
-let rainDrops = [], stars = [], clouds = [];
+let stars = [], clouds = [];
 let lastLane = -1;
 let scoreSaved = false;
 
 const PHASES = [
-  { name:'맑은 낮',  skyTop:'#5aa7e0', skyBot:'#cfe8f8', road:'#3a3d44', grass:'#4d7a40', grass2:'#3f6634', mtn:'#7d96a8', mtn2:'#5a7488', scroll:3,   line:'rgba(250,250,250,0.92)' },
-  { name:'야간 주행', skyTop:'#04040e', skyBot:'#0c1024', road:'#1b1d24', grass:'#0c130d', grass2:'#091009', mtn:'#0b1018', mtn2:'#080c14', scroll:3.5, line:'rgba(235,235,245,0.75)' },
-  { name:'우천 시',  skyTop:'#23283a', skyBot:'#4a5066', road:'#2c2f3a', grass:'#2e3c2c', grass2:'#243122', mtn:'#333a4c', mtn2:'#272e40', scroll:2.5, line:'rgba(245,245,255,0.7)' }
+  { name:'맑은 낮',  sub:'내장 카메라가 주행 중 노면을 실시간 분석합니다', skyTop:'#5aa7e0', skyBot:'#cfe8f8', road:'#3a3d44', grass:'#4d7a40', grass2:'#3f6634', mtn:'#7d96a8', mtn2:'#5a7488', scroll:3,   line:'rgba(250,250,250,0.92)' },
+  { name:'야간 주행', sub:'사람 눈이 놓치는 어둠 속에서도 AI는 봅니다', skyTop:'#04040e', skyBot:'#0c1024', road:'#1b1d24', grass:'#0c130d', grass2:'#091009', mtn:'#0b1018', mtn2:'#080c14', scroll:3.5, line:'rgba(235,235,245,0.75)' }
 ];
+let effects = [];
+const TOTAL_POTHOLES = 8, PER_PHASE = 4;
 const DETECT_WINDOW = 2000; // ms
 const ease = p => Math.pow(p, 1.7);
-const phaseOf = idx => Math.floor(idx / 3);
+const phaseOf = idx => Math.floor(idx / PER_PHASE);
+let detectedCount = 0, bestReaction = Infinity;
 
 function createPothole(idx){
   let lane;
@@ -288,7 +358,7 @@ function createPothole(idx){
 
 /* ───────── 시작 / 캔버스 init ───────── */
 function startGame(){
-  score = 0; currentPotholeIndex = 0; currentPothole = null;
+  score = 0; currentPotholeIndex = 0; currentPothole = null; detectedCount = 0; bestReaction = Infinity; effects = [];
   lastLane = -1; roadScroll = 0; signT = 0.3; scoreSaved = false; phasePause = false;
   $('hud-score').textContent = 'SCORE: 0';
   updatePhaseDots(0);
@@ -308,10 +378,6 @@ function startGameRetry(){
   bootGameLoop();
 }
 function bootGameLoop(){
-  rainDrops = Array.from({length:200}, () => ({
-    x: Math.random()*W, y: Math.random()*H,
-    len: Math.random()*15+10, speed: Math.random()*8+12
-  }));
   stars = Array.from({length:55}, () => ({
     x: Math.random(), y: Math.random()*0.8, r: Math.random()*1.3+0.4
   }));
@@ -326,7 +392,7 @@ function bootGameLoop(){
 
 /* ───────── 페이즈 / 스폰 ───────── */
 function updatePhaseDots(cur){
-  for (let i=0;i<3;i++){
+  for (let i=0;i<2;i++){
     const d = $('pd'+i);
     d.className = 'phase-dot' + (i<cur ? ' done' : i===cur ? ' now' : '');
   }
@@ -334,6 +400,7 @@ function updatePhaseDots(cur){
 function showPhaseIntro(phase, cb){
   phasePause = true;
   $('phase-name').textContent = PHASES[phase].name;
+  $('phase-sub').textContent = PHASES[phase].sub;
   const ov = $('phase-overlay');
   ov.classList.add('show');
   setTimeout(()=>{
@@ -344,7 +411,7 @@ function showPhaseIntro(phase, cb){
 }
 function spawnNextPothole(){
   if (!running) return;
-  if (currentPotholeIndex >= 9){ showFinalScene(); return; }
+  if (currentPotholeIndex >= TOTAL_POTHOLES){ showFinalScene(); return; }
   const ph = phaseOf(currentPotholeIndex);
   const prevPh = currentPotholeIndex === 0 ? 0 : phaseOf(currentPotholeIndex-1);
   updatePhaseDots(ph);
@@ -367,19 +434,27 @@ function handleTap(e){
   if (pot && pot.inDetectZone && !pot.resolved){
     pot.detected = true;
     pot.resolved = true;
-    pot.confidence = Math.floor(Math.random()*40) + 60; // 60–99
+    detectedCount++;
+    // 반응속도 기반 점수: 0초=99점 → 2초=59점 (빠를수록 높음)
+    const reactionMs = performance.now() - pot.countdownStart;
+    bestReaction = Math.min(bestReaction, reactionMs);
+    const r = Math.min(1, reactionMs / DETECT_WINDOW);
+    pot.confidence = Math.round(99 - r*40);
     score += pot.confidence;
+    effects.push({ x: pot.px || W/2, y: pot.py || H*0.7, conf: pot.confidence, start: performance.now() });
     $('hud-score').textContent = 'SCORE: ' + score;
-    showPipelineAnimation(pot.confidence);
+    showPipelineAnimation(pot.confidence, reactionMs);
   }
 }
 canvas.addEventListener('touchstart', handleTap, {passive:false});
 canvas.addEventListener('click', handleTap);
 
-function showPipelineAnimation(conf){
+function showPipelineAnimation(conf, reactionMs){
   const b = $('pipeline-banner');
   ['st-sense','st-sync','st-share'].forEach(id=>$(id).classList.remove('on'));
-  $('banner-conf').textContent = 'confidence ' + conf + '%';
+  const sec = (reactionMs/1000).toFixed(2);
+  const label = reactionMs < 600 ? '⚡ FAST!' : reactionMs < 1200 ? '👍 GOOD' : '✓ 탐지';
+  $('banner-conf').innerHTML = label + ' ' + sec + '초<br><span style="font-size:14px;color:#8890a8">confidence ' + conf + '% · +' + conf + '점</span>';
   b.style.display = 'block';
   setTimeout(()=>$('st-sense').classList.add('on'), 50);
   setTimeout(()=>$('st-sync').classList.add('on'), 350);
@@ -390,9 +465,9 @@ function showPipelineAnimation(conf){
 /* ───────── 메인 루프 ───────── */
 function loop(){
   if (!running) return;
-  const ph = currentPothole ? phaseOf(Math.min(currentPotholeIndex-1, 8))
-           : phaseOf(Math.min(currentPotholeIndex, 8));
-  const phc = Math.max(0, Math.min(2, ph));
+  const ph = currentPothole ? phaseOf(Math.min(currentPotholeIndex-1, TOTAL_POTHOLES-1))
+           : phaseOf(Math.min(currentPotholeIndex, TOTAL_POTHOLES-1));
+  const phc = Math.max(0, Math.min(1, ph));
   const P = PHASES[phc];
   roadScroll += P.scroll * 0.012;
   signT += 0.0028 * (P.scroll/3);
@@ -417,6 +492,10 @@ function updatePothole(){
     }
     if (pot.progress >= 1.0){
       pot.resolved = true; // 화면 이탈
+    }
+    if (pot.resolved && !pot.detected && !pot.missMarked){
+      pot.missMarked = true;
+      if (pot.px) effects.push({ miss:true, x:pot.px, y:pot.py, start:performance.now() });
     }
     if (pot.resolved && !spawnTimeout){
       spawnTimeout = setTimeout(()=>{ spawnTimeout = null; spawnNextPothole(); }, 500);
@@ -474,12 +553,6 @@ function drawScene(P, ph){
     cg.addColorStop(0,'rgba(255,170,80,0)');
     cg.addColorStop(1,'rgba(255,170,80,0.14)');
     ctx.fillStyle = cg; ctx.fillRect(0, vy-36, W, 36);
-  } else { // 우천: 짙은 비구름
-    ctx.fillStyle = 'rgba(28,32,46,0.85)';
-    ctx.beginPath();
-    ctx.ellipse(W*0.3, vy*0.18, W*0.36, 30, 0, 0, Math.PI*2);
-    ctx.ellipse(W*0.75, vy*0.30, W*0.30, 26, 0, 0, Math.PI*2);
-    ctx.fill();
   }
 
   /* 2. 산 능선 (2겹) */
@@ -517,19 +590,6 @@ function drawScene(P, ph){
   ctx.moveTo(vx, vy); ctx.lineTo(leftB, H); ctx.lineTo(rightB, H); ctx.closePath();
   ctx.fill();
 
-  /* 우천: 노면 젖은 반사 */
-  if (ph === 2){
-    ctx.fillStyle = 'rgba(170,190,230,0.07)';
-    ctx.beginPath();
-    ctx.moveTo(vx, vy); ctx.lineTo(leftB, H); ctx.lineTo(rightB, H); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 2;
-    for (let i=1;i<=4;i++){
-      const y = vy + (H-vy)*ease(i/4.5);
-      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
-    }
-  }
-
   /* 5. 차선: 양끝 실선(흰) + 내부 점선 2개 */
   ctx.lineCap = 'round';
   drawSolidLine(leftB + laneW*0.04, vx, vy, P.line);
@@ -544,8 +604,18 @@ function drawScene(P, ph){
   /* 7. 도로 표지판 (우측, 주기적으로 지나감) */
   drawSign(rightB + W*0.22, vx, vy, ph);
 
-  /* 8. 포트홀 */
+  /* 8. 노면 텍스처 (스펙클) */
+  ctx.fillStyle = ph===1 ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.06)';
+  for (let i=0;i<34;i++){
+    const tt = ease((i*0.618 + roadScroll*0.12) % 1);
+    if (tt < 0.12) continue;
+    const sx = vx + (laneBottomXs[i%3] - vx)*tt + (((i*97)%41) - 20)*tt;
+    ctx.fillRect(sx, vy + (H-vy)*tt, 1.5 + 3*tt, 1 + 1.6*tt);
+  }
+
+  /* 9. 포트홀 + 탐지 이펙트 */
   if (currentPothole && !phasePause) drawPothole(currentPothole, vx, vy, laneBottomXs);
+  drawEffects();
 
   /* 9. 야간: 어둠 + 헤드라이트 */
   if (ph === 1){
@@ -563,20 +633,7 @@ function drawScene(P, ph){
     }
   }
 
-  /* 10. 우천: 빗줄기 */
-  if (ph === 2){
-    ctx.strokeStyle = 'rgba(185,205,255,0.45)'; ctx.lineWidth = 1.2;
-    for (const d of rainDrops){
-      ctx.beginPath();
-      ctx.moveTo(d.x, d.y);
-      ctx.lineTo(d.x - d.len*0.7, d.y + d.len*0.7);
-      ctx.stroke();
-      d.x -= d.speed*0.7; d.y += d.speed*0.7;
-      if (d.y > H || d.x < 0){ d.x = Math.random()*W*1.3; d.y = -20; }
-    }
-  }
-
-  /* 11. 차량 보닛 */
+  /* 10. 차량 보닛 */
   const hoodH = H*0.11;
   const hg = ctx.createLinearGradient(0, H-hoodH*1.5, 0, H);
   hg.addColorStop(0, '#10203a'); hg.addColorStop(0.5,'#0a1426'); hg.addColorStop(1,'#050a14');
@@ -597,6 +654,12 @@ function drawScene(P, ph){
   ctx.beginPath();
   ctx.moveTo(W*0.5, H - hoodH*1.05); ctx.lineTo(W*0.5, H);
   ctx.stroke();
+
+  /* 비네트 (시네마틱) */
+  const vg = ctx.createRadialGradient(W/2, H*0.55, H*0.34, W/2, H*0.55, H*0.92);
+  vg.addColorStop(0, 'rgba(0,0,10,0)');
+  vg.addColorStop(1, 'rgba(0,0,10,0.38)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 
   /* 12. 카운트다운 링 */
   const pot = currentPothole;
@@ -722,16 +785,57 @@ function drawPothole(pot, vx, vy, lanes){
   ctx.beginPath();
   ctx.ellipse(px - rx*0.3, py - ry*0.2, rx*0.42, ry*0.45, 0.4, 0, Math.PI*2);
   ctx.fill();
-  // 탐지 가능: 맥박 점선 원
+  pot.px = px; pot.py = py; // 이펙트용 위치 저장
+  // 탐지 가능: AI 비전 바운딩 박스 (코너 브래킷 + 스캔라인 + 라이브 라벨)
   if (pot.inDetectZone && !pot.resolved){
-    const pulse = 1 + 0.08*Math.sin(performance.now()/120);
-    ctx.save();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
-    ctx.setLineDash([8,6]);
+    const now = performance.now();
+    const pad = 14 + 4*Math.sin(now/150);
+    const bx0 = px - rx - pad, by0 = py - ry - pad;
+    const bw = (rx + pad)*2, bh = (ry + pad)*2;
+    const cl = Math.min(bw, bh)*0.32;
+    ctx.strokeStyle = '#35e0ff'; ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.ellipse(px, py, (rx+16)*pulse, (ry+16)*pulse, 0, 0, Math.PI*2);
+    ctx.moveTo(bx0, by0+cl); ctx.lineTo(bx0, by0); ctx.lineTo(bx0+cl, by0);
+    ctx.moveTo(bx0+bw-cl, by0); ctx.lineTo(bx0+bw, by0); ctx.lineTo(bx0+bw, by0+cl);
+    ctx.moveTo(bx0+bw, by0+bh-cl); ctx.lineTo(bx0+bw, by0+bh); ctx.lineTo(bx0+bw-cl, by0+bh);
+    ctx.moveTo(bx0+cl, by0+bh); ctx.lineTo(bx0, by0+bh); ctx.lineTo(bx0, by0+bh-cl);
     ctx.stroke();
-    ctx.restore();
+    // 스캔라인
+    const sy = by0 + bh*(0.5 + 0.48*Math.sin(now/170));
+    ctx.strokeStyle = 'rgba(53,224,255,0.45)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx0+3, sy); ctx.lineTo(bx0+bw-3, sy); ctx.stroke();
+    // 라이브 추론 라벨
+    const lp = Math.min(99, Math.floor(88 + 11*Math.sin(now/97)));
+    const txt = 'POTHOLE ' + lp + '%';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(txt).width;
+    ctx.fillStyle = 'rgba(6,12,22,0.85)';
+    ctx.fillRect(bx0, by0 - 21, tw + 12, 17);
+    ctx.fillStyle = '#35e0ff';
+    ctx.fillRect(bx0, by0 - 21, 3, 17);
+    ctx.fillText(txt, bx0 + 8, by0 - 12);
+  }
+}
+
+/* ───────── 탐지 이펙트 (성공 링 / 미탐지) ───────── */
+function drawEffects(){
+  const now = performance.now();
+  effects = effects.filter(e => now - e.start < 850);
+  for (const e of effects){
+    const t = (now - e.start)/850;
+    ctx.globalAlpha = 1 - t;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (e.miss){
+      ctx.fillStyle = '#ef4444'; ctx.font = 'bold 17px sans-serif';
+      ctx.fillText('✕ 미탐지', e.x, e.y - 34*t);
+    } else {
+      ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 3.5*(1-t);
+      ctx.beginPath(); ctx.arc(e.x, e.y, 18 + 70*t, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle = '#22c55e'; ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('+' + e.conf, e.x, e.y - 30 - 38*t);
+    }
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -740,14 +844,19 @@ function showFinalScene(){
   running = false;
   cancelAnimationFrame(rafId);
   const fs = $('final-scene');
-  ['fl1','fl2','fl3'].forEach(id=>$(id).classList.remove('show'));
+  ['fl1','fl2','fl3','fl4'].forEach(id=>$(id).classList.remove('show'));
   $('fl-uploader').classList.remove('show');
-  $('fl3-small').textContent = '포트홀 9건 · GPS 좌표 전송됨';
+  const sv = $('repair-svg');
+  sv.classList.remove('on');
+  $('fl3-small').textContent = '포트홀 ' + detectedCount + '건 · GPS 좌표 전송됨';
   fs.classList.add('show');
   setTimeout(()=>$('fl1').classList.add('show'), 100);
   setTimeout(()=>{ $('fl2').classList.add('show'); $('fl-uploader').classList.add('show'); }, 800);
   setTimeout(()=>{ $('fl3').classList.add('show'); $('fl-uploader').classList.remove('show'); }, 1700);
-  setTimeout(()=>{ fs.classList.remove('show'); showResult(); }, 2700);
+  // 보수 씬: 트럭 진입 → 라바콘 → 작업자 → 포트홀 패치
+  setTimeout(()=>{ sv.classList.add('on'); }, 2500);
+  setTimeout(()=>$('fl4').classList.add('show'), 5300);
+  setTimeout(()=>{ fs.classList.remove('show'); showResult(); }, 6700);
 }
 
 /* ───────── 결과 화면 ───────── */
@@ -817,18 +926,123 @@ async function fetchRank(myScore){
   }
 }
 
-/* ───────── 결과 버튼 ───────── */
-$('btn-share').addEventListener('click', async ()=>{
-  const grade = calcGrade(score);
-  const text = 'BMW RoadGuardian 포트홀 탐지 챌린지\n내 점수: ' + score + '점 (' + grade + '등급) 🚗\n\n3S 파이프라인으로 연 4,800건 포트홀을\n자동 탐지·신고하는 프로젝트입니다.\n\n' + location.origin + location.pathname.replace(/game\.html$/, 'index.html');
-  if (navigator.share){
-    try { await navigator.share({ title:'BMW RoadGuardian', text }); } catch(e){}
-  } else {
-    try {
-      await navigator.clipboard.writeText(text);
-      alert('공유 텍스트가 복사되었습니다!');
-    } catch(e){ alert(text); }
+/* ───────── 결과 버튼: 공유 카드 ───────── */
+function buildShareCard(){
+  const CW = 1080, CH = 1350;
+  const cv = document.createElement('canvas');
+  cv.width = CW; cv.height = CH;
+  const c = cv.getContext('2d');
+  const grade = calcGrade(score), meta = GRADE_META[grade];
+  const F = '-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif';
+
+  /* 배경 */
+  const bg = c.createLinearGradient(0,0,0,CH);
+  bg.addColorStop(0,'#0a0c1c'); bg.addColorStop(0.55,'#10142a'); bg.addColorStop(1,'#080810');
+  c.fillStyle = bg; c.fillRect(0,0,CW,CH);
+  /* 은은한 가속선 */
+  c.strokeStyle = 'rgba(74,158,255,0.08)'; c.lineWidth = 3;
+  for (let i=0;i<7;i++){
+    c.beginPath();
+    c.moveTo(CW/2, 460);
+    c.lineTo((i/6)*CW, CH);
+    c.stroke();
   }
+
+  c.textAlign = 'center';
+  /* 헤더 */
+  c.fillStyle = '#f0f0f8'; c.font = '800 58px ' + F;
+  c.fillText('BMW ', CW/2 - 130, 130);
+  c.fillStyle = '#4a9eff';
+  c.fillText('RoadGuardian', CW/2 + 115, 130);
+  c.fillStyle = '#8890a8'; c.font = '500 34px ' + F;
+  c.fillText('포트홀 탐지 드라이빙 챌린지', CW/2, 188);
+
+  /* 등급 원 */
+  const cx = CW/2, cy = 470, r = 165;
+  c.save();
+  c.shadowColor = meta.hex; c.shadowBlur = 60;
+  c.strokeStyle = meta.hex; c.lineWidth = 14;
+  c.beginPath(); c.arc(cx, cy, r, 0, Math.PI*2); c.stroke();
+  c.restore();
+  c.fillStyle = meta.hex; c.font = '800 190px ' + F;
+  c.textBaseline = 'middle';
+  c.fillText(grade, cx, cy + 12);
+  c.textBaseline = 'alphabetic';
+  /* 칭호 + 닉네임 */
+  c.font = '700 46px ' + F;
+  c.fillText(meta.title, cx, cy + r + 86);
+  c.fillStyle = '#f0f0f8'; c.font = '600 40px ' + F;
+  c.fillText(nickname + ' 님', cx, cy + r + 148);
+
+  /* 점수 */
+  c.fillStyle = '#fff'; c.font = '800 130px ' + F;
+  c.fillText(score.toLocaleString('ko-KR') + '점', cx, 940);
+  /* 스탯 */
+  c.fillStyle = '#8890a8'; c.font = '500 36px ' + F;
+  const rt = isFinite(bestReaction) ? (bestReaction/1000).toFixed(2) + '초' : '-';
+  c.fillText('포트홀 ' + detectedCount + '/' + TOTAL_POTHOLES + '건 탐지  ·  최고 반응속도 ' + rt, cx, 1010);
+  c.fillStyle = '#4a9eff'; c.font = '600 33px ' + F;
+  c.fillText('실제 RoadGuardian AI는 0.76초 만에 탐지·자동 신고합니다', cx, 1068);
+
+  /* 하단 도로 일러스트 */
+  c.fillStyle = '#2a2d36'; c.fillRect(0, 1120, CW, 160);
+  c.strokeStyle = 'rgba(250,250,250,0.75)'; c.lineWidth = 8;
+  c.setLineDash([55,40]);
+  c.beginPath(); c.moveTo(0, 1200); c.lineTo(CW, 1200); c.stroke();
+  c.setLineDash([]);
+  // 포트홀(좌) → 패치 완료(우)
+  c.fillStyle = '#181008'; c.strokeStyle = '#4a3520'; c.lineWidth = 5;
+  c.beginPath(); c.ellipse(250, 1240, 62, 24, 0, 0, Math.PI*2); c.fill(); c.stroke();
+  c.fillStyle = '#52555e'; c.strokeStyle = '#6a6e78';
+  c.beginPath(); c.ellipse(830, 1240, 66, 26, 0, 0, Math.PI*2); c.fill(); c.stroke();
+  c.fillStyle = '#22c55e'; c.font = '700 40px ' + F;
+  c.fillText('✓', 830, 1252);
+  // 화살표
+  c.strokeStyle = '#4a9eff'; c.lineWidth = 7;
+  c.beginPath(); c.moveTo(370, 1240); c.lineTo(700, 1240); c.stroke();
+  c.beginPath(); c.moveTo(700, 1240); c.lineTo(668, 1222); c.moveTo(700, 1240); c.lineTo(668, 1258); c.stroke();
+  c.fillStyle = '#8890a8'; c.font = '600 28px ' + F;
+  c.fillText('SENSE → SYNC → SHARE', 535, 1180);
+
+  /* 푸터 */
+  c.fillStyle = '#4a5068'; c.font = '500 28px ' + F;
+  c.fillText('도로시 팀 | YIDP 2026 · 내 차가 도로를 지킨다', cx, 1322);
+  return cv;
+}
+
+let shareBlob = null;
+function shareText(){
+  const grade = calcGrade(score);
+  return 'BMW RoadGuardian 포트홀 탐지 챌린지\n내 점수: ' + score + '점 (' + grade + '등급) 🚗\n\n3S 파이프라인으로 연 4,800건 포트홀을\n자동 탐지·신고하는 프로젝트입니다.\n\n' + location.origin + location.pathname.replace(/game\.html$/, 'index.html');
+}
+
+$('btn-share').addEventListener('click', ()=>{
+  const cv = buildShareCard();
+  cv.toBlob(blob=>{
+    shareBlob = blob;
+    $('share-img').src = URL.createObjectURL(blob);
+    // Web Share(파일) 미지원 환경에선 공유 버튼 숨김
+    const canFiles = !!(navigator.canShare && navigator.canShare({ files:[new File([blob],'rg.png',{type:'image/png'})] }));
+    $('btn-share-do').style.display = canFiles ? 'flex' : 'none';
+    $('share-modal').classList.add('show');
+  }, 'image/png');
+});
+$('btn-share-do').addEventListener('click', async ()=>{
+  if (!shareBlob) return;
+  const file = new File([shareBlob], 'roadguardian_score.png', { type:'image/png' });
+  try {
+    await navigator.share({ files:[file], title:'BMW RoadGuardian', text: shareText() });
+  } catch(e){ /* 사용자가 취소한 경우 무시 */ }
+});
+$('btn-share-save').addEventListener('click', ()=>{
+  if (!shareBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(shareBlob);
+  a.download = 'roadguardian_' + score + '점.png';
+  a.click();
+});
+$('btn-share-close').addEventListener('click', ()=>{
+  $('share-modal').classList.remove('show');
 });
 $('btn-board').addEventListener('click', ()=>{
   window.location.href = 'board.html?highlight=' + encodeURIComponent(nickname);
