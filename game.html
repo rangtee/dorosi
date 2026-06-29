@@ -129,6 +129,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #event-banner.penalty{background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.6);color:#ff7b88}
 .stat-line{font-size:13px;color:#8890a8;margin:2px 0 4px}
 .stat-line b{color:#cdd3e0}
+
+/* ── 업그레이드: 투표 / 사운드 / 일시정지 / 카운트다운 / 접근성 ── */
+.btn-vote{background:linear-gradient(90deg,#ff9d2e,#ffb340);color:#1a1205;font-weight:800;font-size:17px;text-decoration:none;animation:votePulse 1.9s ease-in-out infinite}
+@keyframes votePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,179,64,.5)}50%{box-shadow:0 0 26px 6px rgba(255,179,64,.42)}}
+.vote-nudge{font-size:14px;color:#ffb340;font-weight:600;text-align:center;margin-bottom:14px}
+.hud-right{display:flex;align-items:center;gap:8px;pointer-events:auto}
+.hud-btn{width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(8,10,18,.6);color:#f0f0f8;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);cursor:pointer;padding:0}
+.hud-btn:active{transform:scale(.92)}
+#count-overlay h2{font-size:92px;font-weight:800;color:var(--accent-light);animation:countPop .7s ease}
+@keyframes countPop{0%{transform:scale(.4);opacity:0}40%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}
+#pause-overlay h2{font-size:30px;font-weight:800;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -178,9 +189,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span>급가속 구간 탐지는 <b style="color:#ffb340">×1.5</b> · 연속 탐지마다 콤보 보너스</span></div>
   </div>
   <div class="score-box">
-    <div class="row1"><b>빠르게 탭할수록 높은 점수!</b><br>1개당 최대 <b>99점</b> · 총 <b>8개 포트홀</b> + 부스트·콤보 보너스 · 낮 → 야간 2단계</div>
+    <div class="row1"><b>빠르게 탭할수록 높은 점수!</b><br>1개당 최대 <b>99점</b> · 총 <b>6개 포트홀</b> + 부스트·콤보 보너스 · 낮 → 야간 2단계</div>
     <div class="grades">
-      <span class="gs">S 820+</span><span class="ga">A 650+</span><span class="gb">B 450+</span>
+      <span class="gs">S 700+</span><span class="ga">A 520+</span><span class="gb">B 360+</span>
     </div>
   </div>
   <button id="btn-go" class="btn btn-primary">출발하기 →</button>
@@ -192,9 +203,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <canvas id="game"></canvas>
   <div id="hud">
     <div id="hud-score">SCORE: 0</div>
-    <div id="hud-phase">
-      <div class="phase-dot" id="pd0"></div>
-      <div class="phase-dot" id="pd1"></div>
+    <div class="hud-right">
+      <div id="hud-phase">
+        <div class="phase-dot" id="pd0"></div>
+        <div class="phase-dot" id="pd1"></div>
+      </div>
+      <button class="hud-btn" id="btn-sound" aria-label="소리 켜기/끄기">🔊</button>
+      <button class="hud-btn" id="btn-pause" aria-label="일시정지">⏸</button>
     </div>
   </div>
   <div id="hud-ai"><span class="dot"></span>AI VISION · 노면 스캔 중</div>
@@ -207,6 +222,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <span class="step" id="st-share">SHARE ✓</span>
     </div>
     <div class="conf" id="banner-conf"></div>
+  </div>
+  <div id="count-overlay" class="fullscreen-overlay"><h2 id="count-num">3</h2></div>
+  <div id="pause-overlay" class="fullscreen-overlay">
+    <h2>일시정지</h2>
+    <p class="sub2">잠시 멈췄어요</p>
+    <button class="btn btn-primary" id="btn-resume" style="margin-top:18px;max-width:200px">계속하기 ▶</button>
   </div>
   <div id="phase-overlay" class="fullscreen-overlay">
     <h2 id="phase-name"></h2>
@@ -263,8 +284,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="best-line" id="best-line"></div>
   <div class="stat-line" id="stat-line"></div>
   <div class="rank-line" id="rank-line">순위 계산 중...</div>
+  <div class="vote-nudge" id="vote-nudge">마음에 드셨다면, 도로시 팀에 한 표 부탁드려요!</div>
   <div class="result-btns">
-    <button class="btn btn-primary" id="btn-share">SNS 공유하기</button>
+    <a class="btn btn-vote" id="btn-vote" href="#" target="_blank" rel="noopener">🗳️ 이 프로젝트에 투표하기 →</a>
+    <button class="btn btn-primary" id="btn-share">결과 공유하기</button>
     <button class="btn btn-outline" id="btn-board">순위 보기</button>
     <button class="btn btn-ghost" id="btn-retry">한 판 더 ↺</button>
   </div>
@@ -289,6 +312,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script>
 'use strict';
+/* ───────── 투표 페이지 URL (← 실제 YIDP 투표 링크로 교체하세요) ───────── */
+const VOTE_URL = 'https://VOTE_URL_HERE';
 /* ───────── Firebase ───────── */
 const firebaseConfig = {
   apiKey: "AIzaSyDhHd--Zz5GMrduusfeeBT14Vddrx7L_54",
@@ -306,15 +331,38 @@ catch(e){ console.warn('Firebase init failed:', e); }
 
 /* ───────── 공통 ───────── */
 const $ = id => document.getElementById(id);
+/* ───────── 사운드 (Web Audio · 파일 없이 합성) / 햅틱 ───────── */
+let audioCtx = null, soundOn = true;
+function initAudio(){
+  if (audioCtx) return;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ audioCtx = null; }
+}
+function tone(freq, dur, type, vol, when){
+  if (!audioCtx || !soundOn) return;
+  const t0 = audioCtx.currentTime + (when || 0);
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type || 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol || 0.2, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.03);
+}
+function sfxDetect(boosted){ tone(660,0.12,'triangle',0.25,0); tone(880,0.12,'triangle',0.25,0.07); if (boosted) tone(1320,0.14,'triangle',0.22,0.14); }
+function sfxMiss(){ tone(180,0.25,'sawtooth',0.16,0); tone(120,0.30,'sawtooth',0.14,0.05); }
+function sfxFalse(){ tone(200,0.18,'square',0.18,0); tone(140,0.22,'square',0.16,0.08); }
+function sfxResult(){ [523,659,784,1047].forEach((f,i)=> tone(f,0.22,'triangle',0.22,i*0.12)); }
+function sfxBeep(){ tone(880,0.10,'square',0.18,0); }
+function vibe(p){ if (navigator.vibrate) { try { navigator.vibrate(p); } catch(e){} } }
 function localDate(){
   const d = new Date(), p = n => String(n).padStart(2,'0');
   return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
 }
 function calcGrade(score){
-  if (score >= 820) return 'S';
-  if (score >= 650) return 'A';
-  if (score >= 450) return 'B';
-  if (score >= 220) return 'C';
+  if (score >= 700) return 'S';
+  if (score >= 520) return 'A';
+  if (score >= 360) return 'B';
+  if (score >= 180) return 'C';
   return 'D';
 }
 const GRADE_META = {
@@ -352,7 +400,7 @@ btnStart.addEventListener('click', ()=>{
   localStorage.setItem('rg_nickname', nickname);
   setScreen('howto');
 });
-$('btn-go').addEventListener('click', ()=> startGame());
+$('btn-go').addEventListener('click', ()=>{ initAudio(); if (audioCtx && audioCtx.state==='suspended') audioCtx.resume(); startGame(); });
 $('link-back-nick').addEventListener('click', e=>{ e.preventDefault(); setScreen('nickname'); });
 
 /* ───────── 게임 상태 ───────── */
@@ -365,14 +413,14 @@ let spawnTimeout = null, phasePause = false;
 let roadScroll = 0, signT = 0.0;
 let stars = [], clouds = [];
 let lastLane = -1;
-let scoreSaved = false;
+let scoreSaved = false, paused = false, pauseAt = 0;
 
 const PHASES = [
   { name:'맑은 낮',  sub:'내장 카메라가 주행 중 노면을 실시간 분석합니다', skyTop:'#5aa7e0', skyBot:'#cfe8f8', road:'#3a3d44', grass:'#4d7a40', grass2:'#3f6634', mtn:'#7d96a8', mtn2:'#5a7488', scroll:3,   line:'rgba(250,250,250,0.92)' },
   { name:'야간 주행', sub:'사람 눈이 놓치는 어둠 속에서도 AI는 봅니다', skyTop:'#04040e', skyBot:'#0c1024', road:'#1b1d24', grass:'#0c130d', grass2:'#091009', mtn:'#0b1018', mtn2:'#080c14', scroll:3.5, line:'rgba(235,235,245,0.75)' }
 ];
 let effects = [];
-const TOTAL_POTHOLES = 8, PER_PHASE = 4;
+const TOTAL_POTHOLES = 6, PER_PHASE = 3;
 const DETECT_WINDOW = 2000; // ms
 const ease = p => Math.pow(p, 1.7);
 const phaseOf = idx => Math.floor(idx / PER_PHASE);
@@ -380,12 +428,12 @@ let detectedCount = 0, bestReaction = Infinity;
 /* ── 신규 상태: 콤보 / 고라니 / 부스트 ── */
 let combo = 0, maxCombo = 0, falsePos = 0;
 let currentDeer = null, boostActive = false;
-let seqIdx = 0, currentPhase = 0;
+let seqIdx = 0, currentPhase = 0, potholeNum = 0;
 const DEER_DUR = 2400;
 const SEQUENCE = [
-  {t:'pot',ph:0},{t:'pot',ph:0},{t:'deer',ph:0},{t:'boost',ph:0},{t:'pot',ph:0},
-  {t:'pot',ph:1},{t:'boost',ph:1},{t:'deer',ph:1},{t:'pot',ph:1},{t:'pot',ph:1}
-];
+  {t:'pot',ph:0},{t:'deer',ph:0},{t:'boost',ph:0},{t:'pot',ph:0},
+  {t:'pot',ph:1},{t:'boost',ph:1},{t:'deer',ph:1},{t:'pot',ph:1}
+]; // 포트홀 낮 3 + 밤 3 = 6
 function eventBanner(cls, txt, ms){
   const el = $('event-banner');
   el.className = ''; el.textContent = txt;
@@ -405,11 +453,14 @@ function startShake(){
   canvas.classList.add('shake');
 }
 
-function createPothole(boosted){
+function createPothole(boosted, num){
   let lane;
   do { lane = Math.floor(Math.random()*3); } while (lane === lastLane);
   lastLane = lane;
-  return { x:lane, progress:0, speed: boosted ? 0.0062 : 0.004, boosted: !!boosted,
+  num = num || 0;
+  const base = 0.0034 + num*0.00046;          // 뒤로 갈수록 빨라짐(첫 포트홀은 느림)
+  const win = Math.max(1300, 2000 - num*130); // 탐지 가능 시간도 점점 짧아짐
+  return { x:lane, progress:0, speed: boosted ? base*1.55 : base, boosted: !!boosted, window:win,
            resolved:false, detected:false, confidence:0, inDetectZone:false, countdownStart:0 };
 }
 
@@ -419,6 +470,7 @@ function startGame(){
   lastLane = -1; roadScroll = 0; signT = 0.3; scoreSaved = false; phasePause = false;
   combo = 0; maxCombo = 0; falsePos = 0; setCombo(0);
   currentDeer = null; boostActive = false; seqIdx = 0; currentPhase = 0;
+  potholeNum = 0; paused = false; $('pause-overlay').classList.remove('show');
   $('hud-score').textContent = 'SCORE: 0';
   updatePhaseDots(0);
   setScreen('playing');
@@ -444,11 +496,48 @@ function bootGameLoop(){
     x: 0.15 + i*0.32 + Math.random()*0.1, y: 0.10 + Math.random()*0.16, s: 0.8 + Math.random()*0.6
   }));
   running = true;
-  showPhaseIntro(0, ()=> spawnNextPothole());
+  showPhaseIntro(0, ()=> startCountdown(()=> spawnNextPothole()));
   cancelAnimationFrame(rafId);
   loop();
 }
 
+/* ───────── 일시정지 / 카운트다운 / 스폰 ───────── */
+function spawnSoon(){
+  return setTimeout(function go(){
+    spawnTimeout = null;
+    if (paused){ spawnTimeout = setTimeout(go, 200); return; }
+    spawnNextPothole();
+  }, 500);
+}
+function pauseGame(){
+  if (paused || gameState !== 'playing' || !running) return;
+  paused = true; pauseAt = performance.now();
+  cancelAnimationFrame(rafId);
+  $('btn-pause').textContent = '▶';
+  $('pause-overlay').classList.add('show');
+}
+function resumeGame(){
+  if (!paused) return;
+  const dt = performance.now() - pauseAt;          // 멈춘 만큼 타이머 보정
+  if (currentPothole && currentPothole.inDetectZone) currentPothole.countdownStart += dt;
+  if (currentDeer) currentDeer.start += dt;
+  effects.forEach(e => e.start += dt);
+  paused = false;
+  $('btn-pause').textContent = '⏸';
+  $('pause-overlay').classList.remove('show');
+  loop();
+}
+function startCountdown(cb){
+  phasePause = true;
+  const ov = $('count-overlay'), el = $('count-num');
+  let n = 3; el.textContent = n; ov.classList.add('show'); sfxBeep();
+  const iv = setInterval(()=>{
+    n--;
+    if (n > 0){ el.textContent = n; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; sfxBeep(); }
+    else if (n === 0){ el.textContent = 'GO!'; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; sfxDetect(false); }
+    else { clearInterval(iv); ov.classList.remove('show'); phasePause = false; cb && cb(); }
+  }, 700);
+}
 /* ───────── 페이즈 / 스폰 ───────── */
 function updatePhaseDots(cur){
   for (let i=0;i<2;i++){
@@ -489,9 +578,9 @@ function fireSeq(item){
   } else if (item.t === 'boost'){
     boostActive = true;
     eventBanner('boost', '⚡ 부스트 구간! 점수 ×1.5', 1500);
-    currentPothole = createPothole(true);
+    currentPothole = createPothole(true, potholeNum++);
   } else {
-    currentPothole = createPothole(false);
+    currentPothole = createPothole(false, potholeNum++);
   }
 }
 
@@ -507,7 +596,7 @@ function handleTap(e){
     // 반응속도 기반 점수: 0초=99점 → 2초=59점 (빠를수록 높음)
     const reactionMs = performance.now() - pot.countdownStart;
     bestReaction = Math.min(bestReaction, reactionMs);
-    const r = Math.min(1, reactionMs / DETECT_WINDOW);
+    const r = Math.min(1, reactionMs / pot.window);
     pot.confidence = Math.round(99 - r*40);
     const gain = pot.boosted ? Math.round(pot.confidence * 1.5) : pot.confidence;
     combo++; maxCombo = Math.max(maxCombo, combo);
@@ -517,6 +606,7 @@ function handleTap(e){
     effects.push({ x: pot.px || W/2, y: pot.py || H*0.7, conf: gain, bonus,
                    boosted: pot.boosted, start: performance.now() });
     $('hud-score').textContent = 'SCORE: ' + score;
+    sfxDetect(pot.boosted); vibe(18);
     showPipelineAnimation(pot.confidence, reactionMs, gain, pot.boosted);
     return;
   }
@@ -526,6 +616,7 @@ function handleTap(e){
     falsePos++; combo = 0; setCombo(0);
     score = Math.max(0, score - 30);
     $('hud-score').textContent = 'SCORE: ' + score;
+    sfxFalse(); vibe([40,30,40]);
     eventBanner('penalty', '✕ 오탐지! 야생동물은 신고 대상이 아닙니다 −30', 1900);
     if (currentDeer.px) effects.push({ fp:true, x: currentDeer.px, y: currentDeer.py - 40, start: performance.now() });
   }
@@ -548,7 +639,7 @@ function showPipelineAnimation(conf, reactionMs, gain, boosted){
 
 /* ───────── 메인 루프 ───────── */
 function loop(){
-  if (!running) return;
+  if (!running || paused) return;
   const phc = currentPhase;
   const P = PHASES[phc];
   const sp = boostActive ? 1.85 : 1;
@@ -572,7 +663,7 @@ function updatePothole(){
       pot.inDetectZone = true;
       pot.countdownStart = performance.now();
     }
-    if (pot.inDetectZone && performance.now() - pot.countdownStart >= DETECT_WINDOW){
+    if (pot.inDetectZone && performance.now() - pot.countdownStart >= pot.window){
       pot.resolved = true; // 탐지 실패 (타이머 만료)
     }
     if (pot.progress >= 1.0){
@@ -581,11 +672,12 @@ function updatePothole(){
     if (pot.resolved && !pot.detected && !pot.missMarked){
       pot.missMarked = true;
       combo = 0; setCombo(0);
+      sfxMiss(); vibe(50);
       startShake();
       if (pot.px) effects.push({ miss:true, x:pot.px, y:pot.py, start:performance.now() });
     }
     if (pot.resolved && !spawnTimeout){
-      spawnTimeout = setTimeout(()=>{ spawnTimeout = null; spawnNextPothole(); }, 500);
+      spawnTimeout = spawnSoon();
     }
   } else if (!spawnTimeout && currentPothole === pot){
     spawnTimeout = setTimeout(()=>{ spawnTimeout = null; spawnNextPothole(); }, 500);
@@ -845,19 +937,24 @@ function drawScene(P, ph){
   vg.addColorStop(1, 'rgba(0,0,10,0.38)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 
-  /* 12. 카운트다운 링 */
+  /* 12. 카운트다운 링 (+ 접근성: 두께·숫자·TAP 텍스트로 색맹 보조) */
   const pot = currentPothole;
   if (pot && pot.inDetectZone && !pot.resolved){
-    const remain = Math.max(0, 1 - (performance.now() - pot.countdownStart)/DETECT_WINDOW);
+    const remain = Math.max(0, 1 - (performance.now() - pot.countdownStart)/pot.window);
     const cx = W/2, cy = 96, r = 22;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4 + (1-remain)*6;            // 시간이 줄수록 링이 두꺼워짐
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
     ctx.strokeStyle = remain > 0.5 ? '#22c55e' : remain > 0.25 ? '#f59e0b' : '#ef4444';
     ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2 + Math.PI*2*remain); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText((remain*2).toFixed(1), cx, cy);
+    ctx.fillText((remain * pot.window/1000).toFixed(1), cx, cy);
+    if (Math.sin(performance.now()/120) > -0.3){  // 깜빡이는 'TAP' 안내(색 비의존)
+      ctx.fillStyle = remain > 0.25 ? '#fff' : '#ff7b88';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('지금 탭!', cx, cy + r + 16);
+    }
   }
 }
 
@@ -1055,6 +1152,8 @@ function showFinalScene(){
 function showResult(){
   const grade = calcGrade(score);
   const meta = GRADE_META[grade];
+  $('btn-vote').href = VOTE_URL;
+  sfxResult();
   $('grade-letter').textContent = grade;
   const gc = $('grade-circle');
   gc.style.borderColor = meta.hex;
@@ -1081,7 +1180,7 @@ function showResult(){
     bl.textContent = '오늘의 최고기록: ' + Math.max(best, score) + '점';
   }
 
-  $('stat-line').innerHTML = '탐지 <b>' + detectedCount + '/8</b> · 최대 콤보 <b>' +
+  $('stat-line').innerHTML = '탐지 <b>' + detectedCount + '/' + TOTAL_POTHOLES + '</b> · 최대 콤보 <b>' +
     maxCombo + '</b> · 오탐지 <b>' + falsePos + '회</b>';
   setScreen('result');
 
@@ -1094,9 +1193,12 @@ function showResult(){
 
 async function saveScore(nickname, score, grade){
   if (!db) return;
+  const safeNick  = String(nickname || '').replace(/[<>]/g,'').trim().slice(0,8) || '익명';
+  const safeScore = Math.max(0, Math.min(2000, Math.round(Number(score) || 0)));
+  const safeGrade = ['S','A','B','C','D'].includes(grade) ? grade : 'D';
   try {
     await db.ref('scores').push({
-      nickname, score, grade,
+      nickname: safeNick, score: safeScore, grade: safeGrade,
       timestamp: Date.now(),
       date: localDate()
     });
@@ -1281,6 +1383,17 @@ function runConfetti(){
     requestAnimationFrame(tick);
   })();
 }
+
+/* ───────── 사운드 / 일시정지 컨트롤 ───────── */
+$('btn-sound').addEventListener('click', ()=>{
+  soundOn = !soundOn;
+  $('btn-sound').textContent = soundOn ? '🔊' : '🔇';
+});
+$('btn-pause').addEventListener('click', ()=>{ paused ? resumeGame() : pauseGame(); });
+$('btn-resume').addEventListener('click', resumeGame);
+document.addEventListener('visibilitychange', ()=>{
+  if (document.hidden && gameState === 'playing' && running && !paused) pauseGame();
+});
 
 /* ───────── 리사이즈 대응 ───────── */
 window.addEventListener('resize', ()=>{
